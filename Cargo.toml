@@ -1,0 +1,37 @@
+[package]
+name = "edjc"
+version = "0.1.0"
+edition = "2021"
+description = "Elite Dangerous Jump Calculator - HexChat Plugin"
+license = "MIT"
+repository = "https://github.com/SomewhatAwake/edjc"
+authors = ["Nicole Bunker <hi@awaken.page>"]
+
+[lib]
+name = "edjc"
+crate-type = ["cdylib"]
+
+[dependencies]
+# HTTP client for API requests
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+# JSON serialization/deserialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# TOML configuration files
+toml = "0.8"
+# Regex for parsing messages
+regex = "1.0"
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+# Logging
+log = "0.4"
+env_logger = "0.10"
+# HexChat plugin bindings
+libc = "0.2"
+# Configuration
+config = "0.13"
+# Cache for API responses
+moka = { version = "0.12", features = ["sync"] }
+# Date/time handling
+chrono = { version = "0.4", features = ["serde"] }

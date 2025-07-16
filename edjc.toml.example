@@ -1,0 +1,31 @@
+# EDJC (Elite Dangerous Jump Calculator) Configuration
+# 
+# To use this plugin, you need to obtain an API key from Inara:
+# 1. Go to https://inara.cz/inapi/
+# 2. Register for an API key
+# 3. Replace "YOUR_API_KEY_HERE" below with your actual key
+# 4. Replace "YOUR_CMDR_NAME" with your Elite Dangerous CMDR name
+
+# Your Inara API key (required)
+inara_api_key = "YOUR_API_KEY_HERE"
+
+# Your CMDR name (required) - this is your Elite Dangerous pilot name
+cmdr_name = "YOUR_CMDR_NAME"
+
+# Cache timeout in seconds (default: 300 = 5 minutes)
+cache_timeout_seconds = 300
+
+# Enable debug logging (default: false)
+debug_mode = false
+
+# Distance thresholds for route suggestions
+neutron_highway_threshold_ly = 500.0
+white_dwarf_threshold_ly = 150.0
+
+# Result format string
+# Available placeholders: {jumps}, {system}, {distance}, {route}, {from}, {to}
+result_format = "🚀 {jumps} jumps to {system} ({distance:.1}ly) via {route}"
+
+# Show additional estimates
+show_fuel_estimates = false
+show_time_estimates = false

@@ -1,0 +1,44 @@
+# Rust
+/target/
+Cargo.lock
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Configuration (may contain API keys)
+config/
+*.toml
+!Cargo.toml
+
+# Build artifacts
+*.dll
+*.so
+*.dylib
+
+# Backup files
+*.bak
+*.tmp
+
+# Coverage reports
+tarpaulin-report.html
+coverage/
+lcov.info
+
+# Profiling
+*.prof
+perf.data*
+
+# Documentation builds
+/docs/build/
