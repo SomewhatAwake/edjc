@@ -7,12 +7,12 @@ This module handles communication with the Inara API to retrieve:
 - System coordinates and data
 */
 
-use anyhow::{Result, anyhow};
-use serde::{Deserialize, Serialize};
-use reqwest::blocking::Client;
-use moka::sync::Cache;
-use std::time::Duration;
+use anyhow::{anyhow, Result};
 use log::debug;
+use moka::sync::Cache;
+use reqwest::blocking::Client;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 use crate::types::{CmdrInfo, ShipInfo, SystemCoordinates};
 
@@ -148,10 +148,50 @@ impl InaraClient {
         })
     }
 
+    /// Test API connection and verify CMDR exists
+    pub fn test_connection(&self, cmdr_name: &str) -> Result<bool> {
+        let request = InaraRequest {
+            header: self.create_header(),
+            events: vec![InaraEvent {
+                event_name: "getCommanderProfile".to_string(),
+                event_timestamp: chrono::Utc::now().to_rfc3339(),
+                event_data: serde_json::json!({
+                    "commanderName": cmdr_name
+                }),
+            }],
+        };
+
+        let response: InaraResponse = self
+            .client
+            .post(INARA_API_URL)
+            .json(&request)
+            .send()?
+            .json()?;
+
+        if let Some(event) = response.events.first() {
+            if event.event_status == 200 {
+                Ok(true) // CMDR found
+            } else if event.event_status == 204 {
+                Ok(false) // CMDR not found
+            } else {
+                Err(anyhow!(
+                    "Inara API error {}: {}",
+                    event.event_status,
+                    event
+                        .event_status_text
+                        .as_deref()
+                        .unwrap_or("Unknown error")
+                ))
+            }
+        } else {
+            Err(anyhow!("No response from Inara API"))
+        }
+    }
+
     /// Get CMDR current location
     pub fn get_cmdr_location(&self, cmdr_name: &str) -> Result<CmdrInfo> {
         let cache_key = format!("cmdr_location_{}", cmdr_name);
-        
+
         if let Some(cached) = self.cache.get(&cache_key) {
             if let Ok(info) = serde_json::from_str::<CmdrInfo>(&cached) {
                 debug!("Using cached CMDR location for {}", cmdr_name);
@@ -170,7 +210,8 @@ impl InaraClient {
             }],
         };
 
-        let response: InaraResponse = self.client
+        let response: InaraResponse = self
+            .client
             .post(INARA_API_URL)
             .json(&request)
             .send()?
@@ -178,8 +219,13 @@ impl InaraClient {
 
         if let Some(event) = response.events.first() {
             if event.event_status != 200 {
-                return Err(anyhow!("Inara API error: {}", 
-                    event.event_status_text.as_deref().unwrap_or("Unknown error")));
+                return Err(anyhow!(
+                    "Inara API error: {}",
+                    event
+                        .event_status_text
+                        .as_deref()
+                        .unwrap_or("Unknown error")
+                ));
             }
 
             if let Some(data) = &event.event_data {
@@ -204,7 +250,7 @@ impl InaraClient {
     /// Get ship information for a CMDR
     pub fn get_ship_info(&self, cmdr_name: &str) -> Result<ShipInfo> {
         let cache_key = format!("ship_info_{}", cmdr_name);
-        
+
         if let Some(cached) = self.cache.get(&cache_key) {
             if let Ok(info) = serde_json::from_str::<ShipInfo>(&cached) {
                 debug!("Using cached ship info for {}", cmdr_name);
@@ -223,7 +269,8 @@ impl InaraClient {
             }],
         };
 
-        let response: InaraResponse = self.client
+        let response: InaraResponse = self
+            .client
             .post(INARA_API_URL)
             .json(&request)
             .send()?
@@ -231,13 +278,18 @@ impl InaraClient {
 
         if let Some(event) = response.events.first() {
             if event.event_status != 200 {
-                return Err(anyhow!("Inara API error: {}", 
-                    event.event_status_text.as_deref().unwrap_or("Unknown error")));
+                return Err(anyhow!(
+                    "Inara API error: {}",
+                    event
+                        .event_status_text
+                        .as_deref()
+                        .unwrap_or("Unknown error")
+                ));
             }
 
             if let Some(data) = &event.event_data {
                 let ships: Vec<ShipResponse> = serde_json::from_value(data.clone())?;
-                
+
                 // Find the current ship
                 if let Some(current_ship) = ships.iter().find(|ship| ship.is_current_ship) {
                     let ship_info = ShipInfo {
@@ -262,7 +314,7 @@ impl InaraClient {
     /// Get system coordinates
     pub fn get_system_coordinates(&self, system_name: &str) -> Result<SystemCoordinates> {
         let cache_key = format!("system_{}", system_name);
-        
+
         if let Some(cached) = self.cache.get(&cache_key) {
             if let Ok(coords) = serde_json::from_str::<SystemCoordinates>(&cached) {
                 debug!("Using cached coordinates for {}", system_name);
@@ -281,7 +333,8 @@ impl InaraClient {
             }],
         };
 
-        let response: InaraResponse = self.client
+        let response: InaraResponse = self
+            .client
             .post(INARA_API_URL)
             .json(&request)
             .send()?
@@ -289,24 +342,31 @@ impl InaraClient {
 
         if let Some(event) = response.events.first() {
             if event.event_status != 200 {
-                return Err(anyhow!("Inara API error: {}", 
-                    event.event_status_text.as_deref().unwrap_or("Unknown error")));
+                return Err(anyhow!(
+                    "Inara API error: {}",
+                    event
+                        .event_status_text
+                        .as_deref()
+                        .unwrap_or("Unknown error")
+                ));
             }
 
             if let Some(data) = &event.event_data {
                 let system: SystemResponse = serde_json::from_value(data.clone())?;
-                
+
                 if system.system_coordinates.len() >= 3 {
                     let coords = SystemCoordinates {
                         name: system.system_name,
                         x: system.system_coordinates[0],
                         y: system.system_coordinates[1],
                         z: system.system_coordinates[2],
-                        has_neutron_star: system.primary_star
+                        has_neutron_star: system
+                            .primary_star
                             .as_ref()
                             .map(|star| star.star_type.to_lowercase().contains("neutron"))
                             .unwrap_or(false),
-                        has_white_dwarf: system.primary_star
+                        has_white_dwarf: system
+                            .primary_star
                             .as_ref()
                             .map(|star| star.star_class.to_uppercase().starts_with("D"))
                             .unwrap_or(false),
@@ -321,7 +381,10 @@ impl InaraClient {
             }
         }
 
-        Err(anyhow!("No coordinate data found for system {}", system_name))
+        Err(anyhow!(
+            "No coordinate data found for system {}",
+            system_name
+        ))
     }
 
     /// Create request header

@@ -26,18 +26,18 @@ RATSIGNAL Case #3 PC ODY – CMDR Whit3Arrow – System: "CRUCIS SECTOR IW-N A6-
 ```
 */
 
+pub mod config;
 mod hexchat;
-mod inara;
-mod jump_calculator;
-mod config;
-mod types;
+pub mod inara;
+pub mod jump_calculator;
+pub mod types;
 
 use anyhow::Result;
-use log::{info, error};
-use regex::Regex;
-use std::sync::OnceLock;
-use std::ffi::{CStr, CString};
 use libc::c_char;
+use log::{error, info, warn};
+use regex::Regex;
+use std::ffi::CString;
+use std::sync::OnceLock;
 
 use crate::inara::InaraClient;
 use crate::jump_calculator::JumpCalculator;
@@ -59,15 +59,40 @@ impl EdJumpCalculator {
     /// Initialize the plugin
     pub fn new() -> Result<Self> {
         let config = config::load_config()?;
-        
+
         Ok(Self {
-            inara_client: InaraClient::new(config.inara_api_key)?,
+            inara_client: InaraClient::new(config.inara_api_key.clone())?,
             jump_calculator: JumpCalculator::new(),
             ratsignal_regex: Regex::new(
-                r#"RATSIGNAL.*?System:\s*"([^"]+)".*?(\d+)\s*LY\s*from\s*([^\s)]+)"#
+                r#"RATSIGNAL.*?Case\s*#(\d+).*?CMDR\s+([^–]+).*?System:\s*"([^"]+)".*?Language:\s*([^(]*)"#,
             )?,
             cmdr_name: config.cmdr_name,
         })
+    }
+
+    /// Validate plugin configuration
+    pub fn validate_config(&self) -> Result<()> {
+        if self.cmdr_name.is_empty() {
+            return Err(anyhow::anyhow!(
+                "CMDR name is not configured. Please set 'cmdr_name' in edjc.toml"
+            ));
+        }
+
+        // Test Inara API connection
+        match self.inara_client.test_connection(&self.cmdr_name) {
+            Ok(true) => {
+                info!(
+                    "Inara API connection successful for CMDR: {}",
+                    self.cmdr_name
+                );
+                Ok(())
+            }
+            Ok(false) => Err(anyhow::anyhow!(
+                "CMDR '{}' not found in Inara database",
+                self.cmdr_name
+            )),
+            Err(e) => Err(anyhow::anyhow!("Inara API connection failed: {}", e)),
+        }
     }
 
     /// Process a chat message and check for RATSIGNAL
@@ -78,27 +103,53 @@ impl EdJumpCalculator {
         }
 
         if let Some(captures) = self.ratsignal_regex.captures(message) {
-            let target_system = captures.get(1).unwrap().as_str();
-            info!("RATSIGNAL detected for system: {}", target_system);
+            let case_number = captures.get(1).map(|m| m.as_str()).unwrap_or("Unknown");
+            let distressed_cmdr = captures
+                .get(2)
+                .map(|m| m.as_str().trim())
+                .unwrap_or("Unknown");
+            let target_system = captures.get(3).unwrap().as_str();
+            let language = captures
+                .get(4)
+                .map(|m| m.as_str().trim())
+                .unwrap_or("Unknown");
+
+            info!(
+                "RATSIGNAL detected - Case #{}, CMDR: {}, System: {}, Language: {}",
+                case_number, distressed_cmdr, target_system, language
+            );
 
             match self.calculate_jumps(target_system) {
                 Ok(result) => {
                     let response = format!(
-                        "🚀 Jump Calculator: {} jumps to {} ({}ly total) via {} route",
+                        "🚀 Case #{}: {} jumps to {} ({:.1}ly) via {} route (for CMDR {})",
+                        case_number,
                         result.jumps,
                         target_system,
                         result.total_distance,
-                        result.route_type
+                        result.route_type,
+                        self.cmdr_name
                     );
                     Ok(Some(response))
                 }
                 Err(e) => {
-                    error!("Failed to calculate jumps: {}", e);
-                    Ok(Some(format!("❌ Jump calculation failed for {}: {}", target_system, e)))
+                    error!("Failed to calculate jumps for case #{}: {}", case_number, e);
+                    Ok(Some(format!(
+                        "❌ Case #{}: Jump calculation failed for {} - {}",
+                        case_number, target_system, e
+                    )))
                 }
             }
         } else {
-            Ok(None)
+            // Check if it's a RATSIGNAL but didn't match our pattern
+            if message.contains("RATSIGNAL") {
+                warn!("RATSIGNAL detected but couldn't parse: {}", message);
+                Ok(Some(
+                    "⚠️ RATSIGNAL detected but couldn't parse system information".to_string(),
+                ))
+            } else {
+                Ok(None)
+            }
         }
     }
 
@@ -107,9 +158,11 @@ impl EdJumpCalculator {
         // Get current CMDR location and ship info using the configured CMDR name
         let cmdr_info = self.inara_client.get_cmdr_location(&self.cmdr_name)?;
         let ship_info = self.inara_client.get_ship_info(&self.cmdr_name)?;
-        
+
         // Get system coordinates
-        let current_coords = self.inara_client.get_system_coordinates(&cmdr_info.current_system)?;
+        let current_coords = self
+            .inara_client
+            .get_system_coordinates(&cmdr_info.current_system)?;
         let target_coords = self.inara_client.get_system_coordinates(target_system)?;
 
         // Calculate jump route
@@ -124,31 +177,42 @@ impl EdJumpCalculator {
 // HexChat plugin export functions
 #[no_mangle]
 pub extern "C" fn hexchat_plugin_init(
-    plugin_handle: *mut hexchat::HexChatPlugin,
+    _plugin_handle: *mut hexchat::HexChatPlugin,
     plugin_name: *mut *const c_char,
     plugin_desc: *mut *const c_char,
     plugin_version: *mut *const c_char,
     _arg: *const c_char,
 ) -> i32 {
     // Initialize logging
-    env_logger::init();
+    if let Err(e) = env_logger::try_init() {
+        eprintln!("Failed to initialize logger: {}", e);
+    }
 
     // Set plugin info
     unsafe {
-        *plugin_name = CString::new("Elite Dangerous Jump Calculator").unwrap().into_raw();
-        *plugin_desc = CString::new("Calculates jumps to RATSIGNAL systems").unwrap().into_raw();
+        *plugin_name = CString::new("Elite Dangerous Jump Calculator")
+            .unwrap()
+            .into_raw();
+        *plugin_desc = CString::new("Calculates jumps to RATSIGNAL systems")
+            .unwrap()
+            .into_raw();
         *plugin_version = CString::new("0.1.0").unwrap().into_raw();
     }
 
     // Initialize plugin
     match EdJumpCalculator::new() {
         Ok(plugin) => {
+            // Validate configuration
+            if let Err(e) = plugin.validate_config() {
+                error!("Configuration validation failed: {}", e);
+                return 0; // Failure
+            }
+
             PLUGIN.set(plugin).unwrap();
-            
-            // For now, we'll just log that we're initialized
-            // In a real HexChat plugin, we'd hook into events here
+
             info!("EDJC plugin initialized successfully");
-            
+            info!("Monitoring for RATSIGNAL messages from MechaSqueak[BOT]");
+
             1 // Success
         }
         Err(e) => {
@@ -165,7 +229,12 @@ pub extern "C" fn hexchat_plugin_deinit() -> i32 {
 }
 
 /// Callback for chat messages - placeholder for future implementation
-extern "C" fn message_callback(word: *const *const c_char, _word_eol: *const *const c_char, _user_data: *mut libc::c_void) -> i32 {
+#[allow(dead_code)]
+extern "C" fn message_callback(
+    _word: *const *const c_char,
+    _word_eol: *const *const c_char,
+    _user_data: *mut libc::c_void,
+) -> i32 {
     // This would be implemented when we have proper HexChat API access
     // For now, just return HEXCHAT_EAT_NONE
     hexchat::HEXCHAT_EAT_NONE

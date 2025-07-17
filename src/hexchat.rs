@@ -11,10 +11,10 @@ use libc::{c_char, c_int, c_void};
 pub type HexChatPlugin = c_void;
 
 /// HexChat hook return values
-pub const HEXCHAT_EAT_NONE: c_int = 0;  // Don't eat this event, pass it on
-pub const HEXCHAT_EAT_HEXCHAT: c_int = 1;  // Don't let HexChat see this event
-pub const HEXCHAT_EAT_PLUGIN: c_int = 2;  // Don't let other plugins see this event
-pub const HEXCHAT_EAT_ALL: c_int = 3;  // Don't let anything see this event
+pub const HEXCHAT_EAT_NONE: c_int = 0; // Don't eat this event, pass it on
+pub const HEXCHAT_EAT_HEXCHAT: c_int = 1; // Don't let HexChat see this event
+pub const HEXCHAT_EAT_PLUGIN: c_int = 2; // Don't let other plugins see this event
+pub const HEXCHAT_EAT_ALL: c_int = 3; // Don't let anything see this event
 
 /// HexChat context handle
 pub type HexChatContext = c_void;
@@ -31,10 +31,21 @@ pub type HexChatCallback = extern "C" fn(
 
 // HexChat API function pointers - these will be provided by HexChat at runtime
 static mut HEXCHAT_PRINT: Option<unsafe extern "C" fn(*mut HexChatPlugin, *const c_char)> = None;
-static mut HEXCHAT_HOOK_PRINT: Option<unsafe extern "C" fn(*mut HexChatPlugin, *const c_char, Option<HexChatCallback>, *mut c_void) -> *mut HexChatHook> = None;
+static mut HEXCHAT_HOOK_PRINT: Option<
+    unsafe extern "C" fn(
+        *mut HexChatPlugin,
+        *const c_char,
+        Option<HexChatCallback>,
+        *mut c_void,
+    ) -> *mut HexChatHook,
+> = None;
 static mut HEXCHAT_COMMAND: Option<unsafe extern "C" fn(*mut HexChatPlugin, *const c_char)> = None;
-static mut HEXCHAT_GET_INFO: Option<unsafe extern "C" fn(*mut HexChatPlugin, *const c_char) -> *const c_char> = None;
-static mut HEXCHAT_UNHOOK: Option<unsafe extern "C" fn(*mut HexChatPlugin, *mut HexChatHook) -> *mut c_void> = None;
+static mut HEXCHAT_GET_INFO: Option<
+    unsafe extern "C" fn(*mut HexChatPlugin, *const c_char) -> *const c_char,
+> = None;
+static mut HEXCHAT_UNHOOK: Option<
+    unsafe extern "C" fn(*mut HexChatPlugin, *mut HexChatHook) -> *mut c_void,
+> = None;
 
 // Global plugin handle storage
 static mut PLUGIN_HANDLE: *mut HexChatPlugin = std::ptr::null_mut();
@@ -44,7 +55,12 @@ static mut PLUGIN_HANDLE: *mut HexChatPlugin = std::ptr::null_mut();
 pub unsafe fn init_hexchat_api(
     plugin_handle: *mut HexChatPlugin,
     print_fn: unsafe extern "C" fn(*mut HexChatPlugin, *const c_char),
-    hook_print_fn: unsafe extern "C" fn(*mut HexChatPlugin, *const c_char, Option<HexChatCallback>, *mut c_void) -> *mut HexChatHook,
+    hook_print_fn: unsafe extern "C" fn(
+        *mut HexChatPlugin,
+        *const c_char,
+        Option<HexChatCallback>,
+        *mut c_void,
+    ) -> *mut HexChatHook,
     command_fn: unsafe extern "C" fn(*mut HexChatPlugin, *const c_char),
     get_info_fn: unsafe extern "C" fn(*mut HexChatPlugin, *const c_char) -> *const c_char,
     unhook_fn: unsafe extern "C" fn(*mut HexChatPlugin, *mut HexChatHook) -> *mut c_void,
@@ -124,7 +140,7 @@ pub fn c_str_to_string(c_str: *const c_char) -> String {
     if c_str.is_null() {
         return String::new();
     }
-    
+
     unsafe {
         std::ffi::CStr::from_ptr(c_str)
             .to_string_lossy()

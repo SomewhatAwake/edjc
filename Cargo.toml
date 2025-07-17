@@ -9,7 +9,11 @@ authors = ["Nicole Bunker <hi@awaken.page>"]
 
 [lib]
 name = "edjc"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
+
+[[bin]]
+name = "test"
+path = "src/bin/test.rs"
 
 [dependencies]
 # HTTP client for API requests
@@ -35,3 +39,9 @@ config = "0.13"
 moka = { version = "0.12", features = ["sync"] }
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+# For testing with temporary files
+tempfile = "3.8"
+# For async runtime in tests (if needed)
+tokio = { version = "1.0", features = ["full"] }

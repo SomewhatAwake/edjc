@@ -9,7 +9,7 @@ affect jump range (neutron stars and white dwarfs).
 use anyhow::Result;
 use log::debug;
 
-use crate::types::{SystemCoordinates, JumpResult};
+use crate::types::{JumpResult, SystemCoordinates};
 
 /// Jump route calculator
 #[derive(Debug)]
@@ -48,35 +48,38 @@ impl JumpCalculator {
         base_jump_range: f64,
     ) -> Result<JumpResult> {
         let total_distance = self.calculate_distance(from, to);
-        
-        debug!("Calculating route from {} to {} ({}ly)", 
-               from.name, to.name, total_distance);
+
+        debug!(
+            "Calculating route from {} to {} ({}ly)",
+            from.name, to.name, total_distance
+        );
 
         // Calculate jumps for different scenarios
         let normal_jumps = self.calculate_jumps_direct(total_distance, base_jump_range);
-        
+
         // Check if we can use neutron highway
         let neutron_jumps = self.calculate_jumps_with_boost(
-            total_distance, 
-            base_jump_range, 
-            StellarBoost::NeutronStar
+            total_distance,
+            base_jump_range,
+            StellarBoost::NeutronStar,
         );
-        
+
         // Check if white dwarf route is better
         let white_dwarf_jumps = self.calculate_jumps_with_boost(
-            total_distance, 
-            base_jump_range, 
-            StellarBoost::WhiteDwarf
+            total_distance,
+            base_jump_range,
+            StellarBoost::WhiteDwarf,
         );
 
         // Determine the best route
-        let (jumps, route_type) = if neutron_jumps < normal_jumps && neutron_jumps < white_dwarf_jumps {
-            (neutron_jumps, "neutron highway".to_string())
-        } else if white_dwarf_jumps < normal_jumps {
-            (white_dwarf_jumps, "white dwarf assisted".to_string())
-        } else {
-            (normal_jumps, "direct".to_string())
-        };
+        let (jumps, route_type) =
+            if neutron_jumps < normal_jumps && neutron_jumps < white_dwarf_jumps {
+                (neutron_jumps, "neutron highway".to_string())
+            } else if white_dwarf_jumps < normal_jumps {
+                (white_dwarf_jumps, "white dwarf assisted".to_string())
+            } else {
+                (normal_jumps, "direct".to_string())
+            };
 
         Ok(JumpResult {
             jumps,
@@ -92,7 +95,7 @@ impl JumpCalculator {
         let dx = to.x - from.x;
         let dy = to.y - from.y;
         let dz = to.z - from.z;
-        
+
         (dx * dx + dy * dy + dz * dz).sqrt()
     }
 
@@ -103,22 +106,22 @@ impl JumpCalculator {
 
     /// Calculate jumps using stellar boost routing
     fn calculate_jumps_with_boost(
-        &self, 
-        distance: f64, 
-        base_jump_range: f64, 
-        boost: StellarBoost
+        &self,
+        distance: f64,
+        base_jump_range: f64,
+        boost: StellarBoost,
     ) -> u32 {
         // Simplified calculation assuming we can find boost stars along the route
         // In reality, this would require pathfinding through actual stellar data
-        
+
         let boosted_range = base_jump_range * boost.multiplier();
-        
+
         // Assume we need to make one extra jump to reach a boost star
         // and can use boosted jumps for most of the journey
         let boost_overhead = 1; // Extra jump to reach boost star
         let boosted_jumps = ((distance * 0.8) / boosted_range).ceil() as u32;
         let normal_jumps = ((distance * 0.2) / base_jump_range).ceil() as u32;
-        
+
         boost_overhead + boosted_jumps + normal_jumps
     }
 
@@ -140,7 +143,7 @@ impl JumpCalculator {
         // Real calculation would depend on ship mass, FSD rating, etc.
         let base_fuel_per_jump = 2.0; // tons
         let range_factor = (jump_range / 20.0).max(0.5); // Normalize around 20ly
-        
+
         jumps as f64 * base_fuel_per_jump * range_factor
     }
 
@@ -153,7 +156,7 @@ impl JumpCalculator {
     ) -> Result<RouteDetails> {
         let result = self.calculate_route(from, to, base_jump_range)?;
         let fuel_usage = self.estimate_fuel_usage(result.jumps, base_jump_range);
-        
+
         Ok(RouteDetails {
             result: result.clone(),
             estimated_fuel_usage: fuel_usage,
@@ -187,7 +190,7 @@ mod tests {
     #[test]
     fn test_distance_calculation() {
         let calc = JumpCalculator::new();
-        
+
         let sol = SystemCoordinates {
             name: "Sol".to_string(),
             x: 0.0,
@@ -196,7 +199,7 @@ mod tests {
             has_neutron_star: false,
             has_white_dwarf: false,
         };
-        
+
         let alpha_centauri = SystemCoordinates {
             name: "Alpha Centauri".to_string(),
             x: 3.03,
@@ -205,7 +208,7 @@ mod tests {
             has_neutron_star: false,
             has_white_dwarf: false,
         };
-        
+
         let distance = calc.calculate_distance(&sol, &alpha_centauri);
         assert!((distance - 4.38).abs() < 0.1); // Should be about 4.38 ly
     }
@@ -213,10 +216,10 @@ mod tests {
     #[test]
     fn test_jump_calculation() {
         let calc = JumpCalculator::new();
-        
+
         let jumps = calc.calculate_jumps_direct(100.0, 25.0);
         assert_eq!(jumps, 4); // 100ly / 25ly = 4 jumps
-        
+
         let jumps = calc.calculate_jumps_direct(99.0, 25.0);
         assert_eq!(jumps, 4); // 99ly / 25ly = 3.96, rounded up to 4
     }

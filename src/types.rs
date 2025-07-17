@@ -188,25 +188,25 @@ pub struct RatsignalInfo {
 pub enum EdjcError {
     #[error("Inara API error: {0}")]
     InaraApi(String),
-    
+
     #[error("System not found: {0}")]
     SystemNotFound(String),
-    
+
     #[error("CMDR not found: {0}")]
     CmdrNotFound(String),
-    
+
     #[error("Invalid jump range: {0}")]
     InvalidJumpRange(f64),
-    
+
     #[error("Configuration error: {0}")]
     Config(String),
-    
+
     #[error("Cache error: {0}")]
     Cache(String),
-    
+
     #[error("Network error: {0}")]
     Network(#[from] reqwest::Error),
-    
+
     #[error("Parsing error: {0}")]
     Parse(String),
 }
@@ -305,7 +305,7 @@ mod tests {
             has_neutron_star: false,
             has_white_dwarf: false,
         };
-        
+
         let alpha_centauri = SystemCoordinates {
             name: "Alpha Centauri".to_string(),
             x: 3.03,
@@ -314,7 +314,7 @@ mod tests {
             has_neutron_star: false,
             has_white_dwarf: false,
         };
-        
+
         let distance = sol.distance_to(&alpha_centauri);
         assert!((distance - 4.38).abs() < 0.1);
     }
@@ -323,25 +323,31 @@ mod tests {
     fn test_supercharge_multipliers() {
         let neutron_system = SystemCoordinates {
             name: "Test".to_string(),
-            x: 0.0, y: 0.0, z: 0.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
             has_neutron_star: true,
             has_white_dwarf: false,
         };
-        
+
         let white_dwarf_system = SystemCoordinates {
             name: "Test".to_string(),
-            x: 0.0, y: 0.0, z: 0.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
             has_neutron_star: false,
             has_white_dwarf: true,
         };
-        
+
         let normal_system = SystemCoordinates {
             name: "Test".to_string(),
-            x: 0.0, y: 0.0, z: 0.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
             has_neutron_star: false,
             has_white_dwarf: false,
         };
-        
+
         assert_eq!(neutron_system.supercharge_multiplier(), 4.0);
         assert_eq!(white_dwarf_system.supercharge_multiplier(), 1.5);
         assert_eq!(normal_system.supercharge_multiplier(), 1.0);
@@ -350,8 +356,14 @@ mod tests {
     #[test]
     fn test_security_level_parsing() {
         assert_eq!(SecurityLevel::from_str("high"), Some(SecurityLevel::High));
-        assert_eq!(SecurityLevel::from_str("HIGH SECURITY"), Some(SecurityLevel::High));
-        assert_eq!(SecurityLevel::from_str("medium"), Some(SecurityLevel::Medium));
+        assert_eq!(
+            SecurityLevel::from_str("HIGH SECURITY"),
+            Some(SecurityLevel::High)
+        );
+        assert_eq!(
+            SecurityLevel::from_str("medium"),
+            Some(SecurityLevel::Medium)
+        );
         assert_eq!(SecurityLevel::from_str("invalid"), None);
     }
 
@@ -364,7 +376,7 @@ mod tests {
             from_system: "Sol".to_string(),
             to_system: "Colonia".to_string(),
         };
-        
+
         let formatted = result.format("{jumps} jumps to {system} ({distance:.1}ly)");
         assert_eq!(formatted, "5 jumps to Colonia (123.5ly)");
     }
