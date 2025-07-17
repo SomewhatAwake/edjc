@@ -152,14 +152,10 @@ jobs:
         copy edjc.toml.example release\
 
     - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: release/edjc.${{ matrix.ext }}
-        asset_name: edjc-${{ matrix.target }}.${{ matrix.ext }}
-        asset_content_type: application/octet-stream
+      run: |
+        gh release upload ${{ github.event.release.tag_name }} release/edjc.${{ matrix.ext }}#edjc-${{ matrix.target }}.${{ matrix.ext }} --clobber
 
   deploy-docs:
     name: Deploy Documentation
