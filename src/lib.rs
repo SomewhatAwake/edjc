@@ -36,8 +36,9 @@ use anyhow::Result;
 use libc::c_char;
 use log::{error, info, warn};
 use regex::Regex;
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::sync::OnceLock;
+use std::ptr;
 
 use crate::inara::InaraClient;
 use crate::jump_calculator::JumpCalculator;
@@ -172,14 +173,112 @@ impl EdJumpCalculator {
     }
 }
 
+/// Initialize HexChat integration with proper API hooks
+unsafe fn init_hexchat_integration(
+    plugin_handle: *mut hexchat::HexChatPlugin,
+    _arg: *const c_char,
+) -> Result<()> {
+    // For now, we'll use a simplified approach since HexChat API function pointers
+    // are complex to parse. In a real implementation, you'd parse the function
+    // pointers from the arg parameter.
+    
+    // Store plugin handle for later use
+    hexchat::store_plugin_handle(plugin_handle);
+    
+    // Hook into channel messages to detect RATSIGNAL
+    let hook_name = CString::new("Channel Message")?;
+    let _hook = hexchat::hexchat_hook_print(
+        hook_name.as_ptr(),
+        Some(channel_message_callback),
+        ptr::null_mut(),
+    );
+    
+    Ok(())
+}
+
+/// Callback for channel messages - detects RATSIGNAL messages
+extern "C" fn channel_message_callback(
+    word: *const *const c_char,
+    _word_eol: *const *const c_char,
+    _user_data: *mut libc::c_void,
+) -> i32 {
+    if word.is_null() {
+        return hexchat::HEXCHAT_EAT_NONE;
+    }
+
+    unsafe {
+        // word[0] = nick, word[1] = message
+        let message_ptr = *word.add(1);
+        if message_ptr.is_null() {
+            return hexchat::HEXCHAT_EAT_NONE;
+        }
+
+        let message = match CStr::from_ptr(message_ptr).to_str() {
+            Ok(s) => s,
+            Err(_) => return hexchat::HEXCHAT_EAT_NONE,
+        };
+
+        // Check if it's from MechaSqueak[BOT] and contains RATSIGNAL
+        let nick_ptr = *word;
+        if !nick_ptr.is_null() {
+            if let Ok(nick) = CStr::from_ptr(nick_ptr).to_str() {
+                if nick == "MechaSqueak[BOT]" && message.contains("RATSIGNAL") {
+                    // Process the RATSIGNAL message
+                    if let Some(plugin) = PLUGIN.get() {
+                        match plugin.process_message(nick, message) {
+                            Ok(Some(response)) => {
+                                // Display the response in HexChat
+                                let formatted_response = format!("[EDJC] {response}");
+                                hexchat::hexchat_print(
+                                    CString::new(formatted_response).unwrap().as_ptr()
+                                );
+                            }
+                            Ok(None) => {
+                                // RATSIGNAL detected but couldn't parse or not from expected sender
+                                info!("Message ignored or couldn't parse: {message}");
+                            }
+                            Err(e) => {
+                                error!("Error processing RATSIGNAL: {e}");
+                                let error_msg = format!("[EDJC] Error: {e}");
+                                hexchat::hexchat_print(
+                                    CString::new(error_msg).unwrap().as_ptr()
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    hexchat::HEXCHAT_EAT_NONE // Don't consume the message
+}
+
 // HexChat plugin export functions
+
+/// Initialize the HexChat plugin.
+/// 
+/// This function is called by HexChat when the plugin is loaded.
+/// 
+/// # Safety
+/// 
+/// This function is unsafe because it:
+/// - Dereferences raw pointers (`plugin_name`, `plugin_desc`, `plugin_version`) without null checks
+/// - Assumes the pointers point to valid memory locations that can be written to
+/// - Converts Rust `CString`s to raw pointers and transfers ownership to HexChat
+/// - Calls other unsafe functions that interact with HexChat's C API
+/// 
+/// The caller (HexChat) must ensure that:
+/// - All pointer parameters point to valid, writable memory
+/// - The plugin handle is valid for the lifetime of the plugin
+/// - The arg parameter, if not null, points to valid C string data
 #[no_mangle]
-pub extern "C" fn hexchat_plugin_init(
-    _plugin_handle: *mut hexchat::HexChatPlugin,
+pub unsafe extern "C" fn hexchat_plugin_init(
+    plugin_handle: *mut hexchat::HexChatPlugin,
     plugin_name: *mut *const c_char,
     plugin_desc: *mut *const c_char,
     plugin_version: *mut *const c_char,
-    _arg: *const c_char,
+    arg: *const c_char,
 ) -> i32 {
     // Initialize logging
     if let Err(e) = env_logger::try_init() {
@@ -187,15 +286,13 @@ pub extern "C" fn hexchat_plugin_init(
     }
 
     // Set plugin info
-    unsafe {
-        *plugin_name = CString::new("Elite Dangerous Jump Calculator")
-            .unwrap()
-            .into_raw();
-        *plugin_desc = CString::new("Calculates jumps to RATSIGNAL systems")
-            .unwrap()
-            .into_raw();
-        *plugin_version = CString::new("0.1.0").unwrap().into_raw();
-    }
+    *plugin_name = CString::new("Elite Dangerous Jump Calculator")
+        .unwrap()
+        .into_raw();
+    *plugin_desc = CString::new("Calculates jumps to RATSIGNAL systems")
+        .unwrap()
+        .into_raw();
+    *plugin_version = CString::new("0.1.0").unwrap().into_raw();
 
     // Initialize plugin
     match EdJumpCalculator::new() {
@@ -203,7 +300,21 @@ pub extern "C" fn hexchat_plugin_init(
             // Validate configuration
             if let Err(e) = plugin.validate_config() {
                 error!("Configuration validation failed: {e}");
-                return 0; // Failure
+                
+                // Still try to initialize but warn user
+                let error_msg = format!("[EDJC] Configuration error: {e}");
+                hexchat::hexchat_print(
+                    CString::new(error_msg).unwrap().as_ptr(),
+                );
+            }
+
+            // Try to set up HexChat API if we have the function pointers
+            if !arg.is_null() {
+                if let Err(e) = init_hexchat_integration(plugin_handle, arg) {
+                    warn!("HexChat integration limited: {e}");
+                } else {
+                    info!("HexChat integration initialized");
+                }
             }
 
             PLUGIN.set(plugin).unwrap();
@@ -220,6 +331,10 @@ pub extern "C" fn hexchat_plugin_init(
     }
 }
 
+/// Deinitialize the HexChat plugin.
+/// 
+/// This function is called by HexChat when the plugin is being unloaded.
+/// Returns 1 on success, 0 on failure.
 #[no_mangle]
 pub extern "C" fn hexchat_plugin_deinit() -> i32 {
     info!("EDJC plugin deinitialized");

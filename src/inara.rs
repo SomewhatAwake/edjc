@@ -59,6 +59,7 @@ struct InaraEvent {
 /// Inara API response structure
 #[derive(Deserialize)]
 struct InaraResponse {
+    #[allow(dead_code)]
     header: InaraResponseHeader,
     events: Vec<InaraEventResponse>,
 }
@@ -66,8 +67,10 @@ struct InaraResponse {
 #[derive(Deserialize)]
 struct InaraResponseHeader {
     #[serde(rename = "eventStatus")]
+    #[allow(dead_code)]
     event_status: i32,
     #[serde(rename = "eventStatusText")]
+    #[allow(dead_code)]
     event_status_text: Option<String>,
 }
 
@@ -100,6 +103,7 @@ struct ShipResponse {
     #[serde(rename = "shipName")]
     ship_name: Option<String>,
     #[serde(rename = "shipIdent")]
+    #[allow(dead_code)]
     ship_ident: Option<String>,
     #[serde(rename = "isCurrentShip")]
     is_current_ship: bool,

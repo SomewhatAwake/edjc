@@ -244,16 +244,27 @@ mod tests {
 
     #[test]
     fn test_config_validation() {
-        let mut config = Config::default();
-        config.inara_api_key = "test_key".to_string();
+        let config = Config {
+            inara_api_key: "test_key".to_string(),
+            ..Default::default()
+        };
 
         assert!(validate_config(&config).is_ok());
 
-        config.inara_api_key = String::new();
+        let config = Config {
+            inara_api_key: String::new(),
+            ..Default::default()
+        };
         assert!(validate_config(&config).is_err());
 
-        config.inara_api_key = "test_key".to_string();
-        config.cache_timeout_seconds = 0;
+        let config = Config {
+            inara_api_key: "test_key".to_string(),
+            ..Default::default()
+        };
+        let config = Config {
+            cache_timeout_seconds: 0,
+            ..config
+        };
         assert!(validate_config(&config).is_err());
     }
 
