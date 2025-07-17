@@ -17,16 +17,6 @@ A HexChat plugin written in Rust that automatically calculates optimal jump rout
 - HexChat IRC client
 - **Registered Inara API application** - see setup below
 
-### ⚠️ **Important: Inara API Setup**
-
-**You cannot just get an API key - your application must be registered with Inara!**
-
-1. **Visit [Inara API page](https://inara.cz/inapi/)**
-2. **Register your application** (not just get an API key)
-3. **Fill out the application form** with details about EDJC
-4. **Wait for approval** from Inara (can take several days)
-5. **Only then** will the API work with your key
-
 ### Quick Install
 
 1. **Download the Plugin**:
@@ -54,12 +44,12 @@ The plugin automatically triggers when it detects a RATSIGNAL message from `Mech
 
 ### Example Trigger Message
 ```
-RATSIGNAL Case #3 PC ODY – CMDR Whit3Arrow – System: "CRUCIS SECTOR IW-N A6-5" (Brown dwarf 51 LY from Fuelum) – Language: English (United States) (en-US) (ODY_SIGNAL)
+RATSIGNAL Case #3 PC ODY – CMDR ResponsibleFuelManagement – System: "Far Flung System" (Brown dwarf 123 LY from Fuelum) – Language: English (United States) (en-US) (ODY_SIGNAL)
 ```
 
 ### Example Output
 ```
-🚀 Jump Calculator: 12 jumps to CRUCIS SECTOR IW-N A6-5 (289.4ly total) via neutron highway route
+Jump Calculator: 12 jumps to Far Flung System (289.4ly total) via neutron highway route
 ```
 
 ## Configuration Options
@@ -169,7 +159,6 @@ This plugin is not affiliated with or endorsed by Frontier Developments or the c
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/SomewhatAwake/edjc/issues)
-- **API Documentation**: [Inara API Documentation](https://inara.cz/inapi/)
 - **Elite Dangerous**: [Official Website](https://www.elitedangerous.com/)
 
 ## Acknowledgments
