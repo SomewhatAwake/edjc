@@ -36,9 +36,9 @@ use anyhow::Result;
 use libc::c_char;
 use log::{error, info, warn};
 use regex::Regex;
-use std::ffi::{CString, CStr};
-use std::sync::OnceLock;
+use std::ffi::{CStr, CString};
 use std::ptr;
+use std::sync::OnceLock;
 
 use crate::inara::InaraClient;
 use crate::jump_calculator::JumpCalculator;
@@ -181,10 +181,10 @@ unsafe fn init_hexchat_integration(
     // For now, we'll use a simplified approach since HexChat API function pointers
     // are complex to parse. In a real implementation, you'd parse the function
     // pointers from the arg parameter.
-    
+
     // Store plugin handle for later use
     hexchat::store_plugin_handle(plugin_handle);
-    
+
     // Hook into channel messages to detect RATSIGNAL
     let hook_name = CString::new("Channel Message")?;
     let _hook = hexchat::hexchat_hook_print(
@@ -192,7 +192,7 @@ unsafe fn init_hexchat_integration(
         Some(channel_message_callback),
         ptr::null_mut(),
     );
-    
+
     Ok(())
 }
 
@@ -230,7 +230,7 @@ extern "C" fn channel_message_callback(
                                 // Display the response in HexChat
                                 let formatted_response = format!("[EDJC] {response}");
                                 hexchat::hexchat_print(
-                                    CString::new(formatted_response).unwrap().as_ptr()
+                                    CString::new(formatted_response).unwrap().as_ptr(),
                                 );
                             }
                             Ok(None) => {
@@ -240,9 +240,7 @@ extern "C" fn channel_message_callback(
                             Err(e) => {
                                 error!("Error processing RATSIGNAL: {e}");
                                 let error_msg = format!("[EDJC] Error: {e}");
-                                hexchat::hexchat_print(
-                                    CString::new(error_msg).unwrap().as_ptr()
-                                );
+                                hexchat::hexchat_print(CString::new(error_msg).unwrap().as_ptr());
                             }
                         }
                     }
@@ -257,17 +255,17 @@ extern "C" fn channel_message_callback(
 // HexChat plugin export functions
 
 /// Initialize the HexChat plugin.
-/// 
+///
 /// This function is called by HexChat when the plugin is loaded.
-/// 
+///
 /// # Safety
-/// 
+///
 /// This function is unsafe because it:
 /// - Dereferences raw pointers (`plugin_name`, `plugin_desc`, `plugin_version`) without null checks
 /// - Assumes the pointers point to valid memory locations that can be written to
 /// - Converts Rust `CString`s to raw pointers and transfers ownership to HexChat
 /// - Calls other unsafe functions that interact with HexChat's C API
-/// 
+///
 /// The caller (HexChat) must ensure that:
 /// - All pointer parameters point to valid, writable memory
 /// - The plugin handle is valid for the lifetime of the plugin
@@ -300,12 +298,10 @@ pub unsafe extern "C" fn hexchat_plugin_init(
             // Validate configuration
             if let Err(e) = plugin.validate_config() {
                 error!("Configuration validation failed: {e}");
-                
+
                 // Still try to initialize but warn user
                 let error_msg = format!("[EDJC] Configuration error: {e}");
-                hexchat::hexchat_print(
-                    CString::new(error_msg).unwrap().as_ptr(),
-                );
+                hexchat::hexchat_print(CString::new(error_msg).unwrap().as_ptr());
             }
 
             // Try to set up HexChat API if we have the function pointers
@@ -332,7 +328,7 @@ pub unsafe extern "C" fn hexchat_plugin_init(
 }
 
 /// Deinitialize the HexChat plugin.
-/// 
+///
 /// This function is called by HexChat when the plugin is being unloaded.
 /// Returns 1 on success, 0 on failure.
 #[no_mangle]

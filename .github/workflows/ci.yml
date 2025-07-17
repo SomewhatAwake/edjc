@@ -11,32 +11,27 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
-jobs:
-  test:
-    name: Test Suite
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        rust: [stable, beta]
-        exclude:
-          - os: macos-latest
-            rust: beta
-          - os: windows-latest
-            rust: beta
+# Add permissions for documentation deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: ${{ matrix.rust }}
         components: rustfmt, clippy
 
     - name: Cache cargo registry
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -52,14 +47,38 @@ jobs:
     - name: Run clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
 
-    - name: Run tests
-      run: cargo test --verbose
-      continue-on-error: true  # Tests may fail without proper API configuration
+    - name: Check build
+      run: cargo check --all-targets --all-features
 
-    - name: Run unit tests only
+  test:
+    name: Test Suite
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Run unit tests
       run: cargo test --lib --verbose
 
-    - name: Build
+    - name: Build release
       run: cargo build --release --verbose
 
   security-audit:
@@ -80,7 +99,7 @@ jobs:
 
   build-release:
     name: Build Release
-    needs: [test, security-audit]
+    needs: [check, test, security-audit]
     runs-on: ${{ matrix.os }}
     if: github.event_name == 'release'
     strategy:
@@ -92,9 +111,6 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             ext: dll
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            ext: so
 
     steps:
     - name: Checkout code
@@ -106,7 +122,7 @@ jobs:
         targets: ${{ matrix.target }}
 
     - name: Cache cargo registry
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -135,40 +151,22 @@ jobs:
         copy LICENSE release\
         copy edjc.toml.example release\
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: edjc-${{ matrix.target }}
-        path: release/
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: release/edjc.${{ matrix.ext }}
+        asset_name: edjc-${{ matrix.target }}.${{ matrix.ext }}
+        asset_content_type: application/octet-stream
 
-    - name: Upload to release
-      uses: softprops/action-gh-release@v1
-      if: github.event_name == 'release'
-      with:
-        files: release/*
-        name: EDJC ${{ github.ref_name }}
-        body: |
-          ## Elite Dangerous Jump Calculator (EDJC) ${{ github.ref_name }}
-          
-          ### Installation
-          1. Download the appropriate plugin file for your platform
-          2. Copy to your HexChat plugins directory
-          3. Copy `edjc.toml.example` to your config directory and rename to `edjc.toml`
-          4. Add your Inara API key to the config file
-          5. Restart HexChat
-          
-          ### Supported Platforms
-          - **Linux**: `edjc.so` (x86_64)
-          - **Windows**: `edjc.dll` (x86_64)
-          - **macOS**: `edjc.so` (x86_64)
-          
-          ### What's New
-          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed changes.
-
-  documentation:
-    name: Documentation
+  deploy-docs:
+    name: Deploy Documentation
     runs-on: ubuntu-latest
+    needs: [check]
     if: github.ref == 'refs/heads/main'
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -177,42 +175,18 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
 
     - name: Generate documentation
-      run: cargo doc --no-deps --all-features
+      run: |
+        cargo doc --no-deps --all-features
+        echo '<meta http-equiv="refresh" content="0; url=edjc">' > target/doc/index.html
 
-    - name: Deploy documentation
-      uses: peaceiris/actions-gh-pages@v3
-      if: github.ref == 'refs/heads/main'
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./target/doc
-        cname: edjc-docs.example.com  # Replace with your custom domain if available
+        path: target/doc
 
-  dependency-update:
-    name: Dependency Update Check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Install cargo-outdated
-      run: cargo install cargo-outdated
-
-    - name: Check for outdated dependencies
-      run: cargo outdated --exit-code 1
-
-    - name: Create issue for outdated dependencies
-      if: failure()
-      uses: actions/github-script@v6
-      with:
-        script: |
-          github.rest.issues.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            title: 'Outdated dependencies detected',
-            body: 'Automated check found outdated dependencies. Please review and update.',
-            labels: ['dependencies', 'maintenance']
-          });
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

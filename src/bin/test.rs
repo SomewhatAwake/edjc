@@ -5,7 +5,10 @@ use std::io::{self, Write};
 
 fn main() -> anyhow::Result<()> {
     // Initialize logging to see debug output
-    if let Err(e) = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).try_init() {
+    if let Err(e) =
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+            .try_init()
+    {
         eprintln!("Failed to initialize logger: {e}");
     }
 

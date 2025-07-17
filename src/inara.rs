@@ -165,11 +165,7 @@ impl InaraClient {
             }],
         };
 
-        let response = self
-            .client
-            .post(INARA_API_URL)
-            .json(&request)
-            .send()?;
+        let response = self.client.post(INARA_API_URL).json(&request).send()?;
 
         let response_text = response.text()?;
 
@@ -179,9 +175,14 @@ impl InaraClient {
                 match event.event_status {
                     200 => Ok(true),  // CMDR found
                     204 => Ok(false), // CMDR not found
-                    _ => Err(anyhow!("Inara API error {}: {}", 
+                    _ => Err(anyhow!(
+                        "Inara API error {}: {}",
                         event.event_status,
-                        event.event_status_text.as_deref().unwrap_or("Unknown error")))
+                        event
+                            .event_status_text
+                            .as_deref()
+                            .unwrap_or("Unknown error")
+                    )),
                 }
             } else {
                 Err(anyhow!("No events in response"))

@@ -30,7 +30,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ]
     });
 
-    println!("Sending test request: {}", serde_json::to_string_pretty(&test_request)?);
+    println!(
+        "Sending test request: {}",
+        serde_json::to_string_pretty(&test_request)?
+    );
 
     match client
         .post("https://inara.cz/inapi/v1/")

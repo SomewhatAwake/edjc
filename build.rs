@@ -14,7 +14,7 @@ fn main() {
 
     // Check if we're building a binary target (skip HexChat exports for binaries)
     let target_name = env::var("CARGO_BIN_NAME");
-    
+
     // Only apply HexChat plugin exports if we're not building a binary
     if target_name.is_err() {
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();

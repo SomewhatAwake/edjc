@@ -102,9 +102,7 @@ pub fn load_config() -> Result<Config> {
 
         Ok(config)
     } else {
-        info!(
-            "Configuration file not found, creating default: {config_path:?}"
-        );
+        info!("Configuration file not found, creating default: {config_path:?}");
         let config = Config::default();
         save_config(&config)?;
         Ok(config)
