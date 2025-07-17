@@ -15,7 +15,7 @@ fn main() {
     // Check what we're building - only apply HexChat exports for the main library
     let pkg_name = env::var("CARGO_PKG_NAME").unwrap_or_default();
     let crate_name = env::var("CARGO_CRATE_NAME").unwrap_or_default();
-    
+
     // Skip HexChat exports for binary targets
     // Binary targets will have different crate names than the main package
     if crate_name != pkg_name {
