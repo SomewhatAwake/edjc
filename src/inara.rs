@@ -190,11 +190,11 @@ impl InaraClient {
 
     /// Get CMDR current location
     pub fn get_cmdr_location(&self, cmdr_name: &str) -> Result<CmdrInfo> {
-        let cache_key = format!("cmdr_location_{}", cmdr_name);
+        let cache_key = format!("cmdr_location_{cmdr_name}");
 
         if let Some(cached) = self.cache.get(&cache_key) {
             if let Ok(info) = serde_json::from_str::<CmdrInfo>(&cached) {
-                debug!("Using cached CMDR location for {}", cmdr_name);
+                debug!("Using cached CMDR location for {cmdr_name}");
                 return Ok(info);
             }
         }
@@ -249,11 +249,11 @@ impl InaraClient {
 
     /// Get ship information for a CMDR
     pub fn get_ship_info(&self, cmdr_name: &str) -> Result<ShipInfo> {
-        let cache_key = format!("ship_info_{}", cmdr_name);
+        let cache_key = format!("ship_info_{cmdr_name}");
 
         if let Some(cached) = self.cache.get(&cache_key) {
             if let Ok(info) = serde_json::from_str::<ShipInfo>(&cached) {
-                debug!("Using cached ship info for {}", cmdr_name);
+                debug!("Using cached ship info for {cmdr_name}");
                 return Ok(info);
             }
         }
@@ -313,11 +313,11 @@ impl InaraClient {
 
     /// Get system coordinates
     pub fn get_system_coordinates(&self, system_name: &str) -> Result<SystemCoordinates> {
-        let cache_key = format!("system_{}", system_name);
+        let cache_key = format!("system_{system_name}");
 
         if let Some(cached) = self.cache.get(&cache_key) {
             if let Ok(coords) = serde_json::from_str::<SystemCoordinates>(&cached) {
-                debug!("Using cached coordinates for {}", system_name);
+                debug!("Using cached coordinates for {system_name}");
                 return Ok(coords);
             }
         }

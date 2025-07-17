@@ -90,7 +90,7 @@ pub fn load_config() -> Result<Config> {
     let config_path = get_config_path()?;
 
     if config_path.exists() {
-        info!("Loading configuration from: {:?}", config_path);
+        info!("Loading configuration from: {config_path:?}");
         let config_content = fs::read_to_string(&config_path)?;
         let config: Config = toml::from_str(&config_content)
             .map_err(|e| anyhow!("Failed to parse config file: {}", e))?;
@@ -103,8 +103,7 @@ pub fn load_config() -> Result<Config> {
         Ok(config)
     } else {
         info!(
-            "Configuration file not found, creating default: {:?}",
-            config_path
+            "Configuration file not found, creating default: {config_path:?}"
         );
         let config = Config::default();
         save_config(&config)?;
@@ -124,7 +123,7 @@ pub fn save_config(config: &Config) -> Result<()> {
     let config_content = toml::to_string_pretty(config)?;
     fs::write(&config_path, config_content)?;
 
-    info!("Configuration saved to: {:?}", config_path);
+    info!("Configuration saved to: {config_path:?}");
     Ok(())
 }
 
@@ -199,7 +198,7 @@ show_time_estimates = false
     }
 
     fs::write(&config_path, sample_config)?;
-    info!("Sample configuration created at: {:?}", config_path);
+    info!("Sample configuration created at: {config_path:?}");
 
     Ok(())
 }

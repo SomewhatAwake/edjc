@@ -32,14 +32,14 @@ fn main() {
             println!("cargo:rustc-link-arg=-Wl,-undefined,dynamic_lookup");
         }
         _ => {
-            println!("cargo:warning=Unknown target OS: {}", target_os);
+            println!("cargo:warning=Unknown target OS: {target_os}");
         }
     }
 
     // Add version information
     let version = env::var("CARGO_PKG_VERSION").unwrap();
-    println!("cargo:rustc-env=PLUGIN_VERSION={}", version);
+    println!("cargo:rustc-env=PLUGIN_VERSION={version}");
 
     let name = env::var("CARGO_PKG_NAME").unwrap();
-    println!("cargo:rustc-env=PLUGIN_NAME={}", name);
+    println!("cargo:rustc-env=PLUGIN_NAME={name}");
 }

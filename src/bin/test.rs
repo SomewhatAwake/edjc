@@ -8,7 +8,7 @@ fn main() -> anyhow::Result<()> {
     let config = match load_config() {
         Ok(config) => config,
         Err(e) => {
-            println!("Failed to load config: {}", e);
+            println!("Failed to load config: {e}");
             println!("Please ensure edjc.toml exists with your Inara API key and CMDR name.");
             return Ok(());
         }
@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     let inara_client = match InaraClient::new(config.inara_api_key.clone()) {
         Ok(client) => client,
         Err(e) => {
-            println!("Failed to create Inara client: {}", e);
+            println!("Failed to create Inara client: {e}");
             return Ok(());
         }
     };
@@ -33,7 +33,7 @@ fn main() -> anyhow::Result<()> {
     match inara_client.test_connection(&config.cmdr_name) {
         Ok(true) => println!("✓ Connection successful, CMDR found"),
         Ok(false) => println!("✗ CMDR '{}' not found in Inara", config.cmdr_name),
-        Err(e) => println!("✗ Connection failed: {}", e),
+        Err(e) => println!("✗ Connection failed: {e}"),
     }
 
     // Test getting CMDR location
@@ -45,10 +45,10 @@ fn main() -> anyhow::Result<()> {
             println!("✓ Current system: {}", location.current_system);
             println!("  CMDR: {}", location.cmdr_name);
             if let Some(station) = &location.current_station {
-                println!("  Station: {}", station);
+                println!("  Station: {station}");
             }
         }
-        Err(e) => println!("✗ Failed to get location: {}", e),
+        Err(e) => println!("✗ Failed to get location: {e}"),
     }
 
     // Test getting ship info
@@ -59,14 +59,14 @@ fn main() -> anyhow::Result<()> {
         Ok(ship) => {
             println!("✓ Ship: {}", ship.ship_type);
             if let Some(name) = &ship.ship_name {
-                println!("  Name: {}", name);
+                println!("  Name: {name}");
             }
             println!(
                 "  Jump range: {:.2} - {:.2} LY",
                 ship.min_jump_range, ship.max_jump_range
             );
         }
-        Err(e) => println!("✗ Failed to get ship info: {}", e),
+        Err(e) => println!("✗ Failed to get ship info: {e}"),
     }
 
     // Test jump calculation
@@ -81,7 +81,7 @@ fn main() -> anyhow::Result<()> {
     ];
 
     for (from, to) in test_cases {
-        print!("  {} -> {}: ", from, to);
+        print!("  {from} -> {to}: ");
         io::stdout().flush()?;
 
         // For this test, we'll use placeholder coordinates
@@ -107,7 +107,7 @@ fn main() -> anyhow::Result<()> {
             Ok(route) => {
                 println!("{} jumps ({:.2} LY)", route.jumps, route.total_distance);
             }
-            Err(e) => println!("Failed: {}", e),
+            Err(e) => println!("Failed: {e}"),
         }
     }
 

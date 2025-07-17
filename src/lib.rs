@@ -115,8 +115,7 @@ impl EdJumpCalculator {
                 .unwrap_or("Unknown");
 
             info!(
-                "RATSIGNAL detected - Case #{}, CMDR: {}, System: {}, Language: {}",
-                case_number, distressed_cmdr, target_system, language
+                "RATSIGNAL detected - Case #{case_number}, CMDR: {distressed_cmdr}, System: {target_system}, Language: {language}"
             );
 
             match self.calculate_jumps(target_system) {
@@ -133,17 +132,16 @@ impl EdJumpCalculator {
                     Ok(Some(response))
                 }
                 Err(e) => {
-                    error!("Failed to calculate jumps for case #{}: {}", case_number, e);
+                    error!("Failed to calculate jumps for case #{case_number}: {e}");
                     Ok(Some(format!(
-                        "❌ Case #{}: Jump calculation failed for {} - {}",
-                        case_number, target_system, e
+                        "❌ Case #{case_number}: Jump calculation failed for {target_system} - {e}"
                     )))
                 }
             }
         } else {
             // Check if it's a RATSIGNAL but didn't match our pattern
             if message.contains("RATSIGNAL") {
-                warn!("RATSIGNAL detected but couldn't parse: {}", message);
+                warn!("RATSIGNAL detected but couldn't parse: {message}");
                 Ok(Some(
                     "⚠️ RATSIGNAL detected but couldn't parse system information".to_string(),
                 ))
@@ -185,7 +183,7 @@ pub extern "C" fn hexchat_plugin_init(
 ) -> i32 {
     // Initialize logging
     if let Err(e) = env_logger::try_init() {
-        eprintln!("Failed to initialize logger: {}", e);
+        eprintln!("Failed to initialize logger: {e}");
     }
 
     // Set plugin info
@@ -204,7 +202,7 @@ pub extern "C" fn hexchat_plugin_init(
         Ok(plugin) => {
             // Validate configuration
             if let Err(e) = plugin.validate_config() {
-                error!("Configuration validation failed: {}", e);
+                error!("Configuration validation failed: {e}");
                 return 0; // Failure
             }
 
@@ -216,7 +214,7 @@ pub extern "C" fn hexchat_plugin_init(
             1 // Success
         }
         Err(e) => {
-            error!("Failed to initialize EDJC plugin: {}", e);
+            error!("Failed to initialize EDJC plugin: {e}");
             0 // Failure
         }
     }
