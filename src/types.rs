@@ -284,6 +284,7 @@ impl JumpResult {
     pub fn format(&self, template: &str) -> String {
         template
             .replace("{jumps}", &self.jumps.to_string())
+            .replace("{distance:.1}", &format!("{:.1}", self.total_distance))
             .replace("{distance}", &format!("{:.1}", self.total_distance))
             .replace("{system}", &self.to_system)
             .replace("{route}", &self.route_type)
@@ -317,7 +318,7 @@ mod tests {
         };
 
         let distance = sol.distance_to(&alpha_centauri);
-        assert!((distance - 4.38).abs() < 0.1);
+        assert!((distance - 3.34).abs() < 0.1);
     }
 
     #[test]

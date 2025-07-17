@@ -244,6 +244,7 @@ mod tests {
     fn test_config_validation() {
         let config = Config {
             inara_api_key: "test_key".to_string(),
+            cmdr_name: "TestCMDR".to_string(),
             ..Default::default()
         };
 
@@ -251,17 +252,23 @@ mod tests {
 
         let config = Config {
             inara_api_key: String::new(),
+            cmdr_name: "TestCMDR".to_string(),
             ..Default::default()
         };
         assert!(validate_config(&config).is_err());
 
         let config = Config {
             inara_api_key: "test_key".to_string(),
+            cmdr_name: String::new(),
             ..Default::default()
         };
+        assert!(validate_config(&config).is_err());
+
         let config = Config {
+            inara_api_key: "test_key".to_string(),
+            cmdr_name: "TestCMDR".to_string(),
             cache_timeout_seconds: 0,
-            ..config
+            ..Default::default()
         };
         assert!(validate_config(&config).is_err());
     }

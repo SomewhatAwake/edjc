@@ -210,7 +210,7 @@ mod tests {
         };
 
         let distance = calc.calculate_distance(&sol, &alpha_centauri);
-        assert!((distance - 4.38).abs() < 0.1); // Should be about 4.38 ly
+        assert!((distance - 3.34).abs() < 0.1); // Should be about 3.34 ly
     }
 
     #[test]

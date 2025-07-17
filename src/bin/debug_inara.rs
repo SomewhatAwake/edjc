@@ -43,10 +43,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(response) => {
             println!("Status: {}", response.status());
             let text = response.text()?;
-            println!("Response: {}", text);
+            println!("Response: {text}");
         }
         Err(e) => {
-            println!("Connection error: {}", e);
+            println!("Connection error: {e}");
         }
     }
 

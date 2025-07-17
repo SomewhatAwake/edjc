@@ -21,8 +21,8 @@ The plugin automatically triggers when it detects a RATSIGNAL message from Mecha
 containing system information.
 
 Example trigger:
-```
-RATSIGNAL Case #3 PC ODY – CMDR Whit3Arrow – System: "CRUCIS SECTOR IW-N A6-5" (Brown dwarf 51 LY from Fuelum) – Language: English (United States) (en-US) (ODY_SIGNAL)
+```text
+RATSIGNAL Case #3 PC ODY - CMDR Whit3Arrow - System: "CRUCIS SECTOR IW-N A6-5" (Brown dwarf 51 LY from Fuelum) - Language: English (United States) (en-US) (ODY_SIGNAL)
 ```
 */
 
