@@ -4,6 +4,11 @@ use edjc::jump_calculator::JumpCalculator;
 use std::io::{self, Write};
 
 fn main() -> anyhow::Result<()> {
+    // Initialize logging to see debug output
+    if let Err(e) = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).try_init() {
+        eprintln!("Failed to initialize logger: {e}");
+    }
+
     // Try to load config
     let config = match load_config() {
         Ok(config) => config,

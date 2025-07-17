@@ -137,7 +137,7 @@ impl InaraClient {
     pub fn new(api_key: String) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
-            .user_agent("EDJC-HexChat-Plugin/0.1.0")
+            .user_agent("Elite Dangerous Jump Calculator/0.1.0")
             .build()?;
 
         let cache = Cache::builder()
@@ -165,30 +165,29 @@ impl InaraClient {
             }],
         };
 
-        let response: InaraResponse = self
+        let response = self
             .client
             .post(INARA_API_URL)
             .json(&request)
-            .send()?
-            .json()?;
+            .send()?;
 
-        if let Some(event) = response.events.first() {
-            if event.event_status == 200 {
-                Ok(true) // CMDR found
-            } else if event.event_status == 204 {
-                Ok(false) // CMDR not found
+        let response_text = response.text()?;
+
+        // Try to parse the response
+        if let Ok(response) = serde_json::from_str::<InaraResponse>(&response_text) {
+            if let Some(event) = response.events.first() {
+                match event.event_status {
+                    200 => Ok(true),  // CMDR found
+                    204 => Ok(false), // CMDR not found
+                    _ => Err(anyhow!("Inara API error {}: {}", 
+                        event.event_status,
+                        event.event_status_text.as_deref().unwrap_or("Unknown error")))
+                }
             } else {
-                Err(anyhow!(
-                    "Inara API error {}: {}",
-                    event.event_status,
-                    event
-                        .event_status_text
-                        .as_deref()
-                        .unwrap_or("Unknown error")
-                ))
+                Err(anyhow!("No events in response"))
             }
         } else {
-            Err(anyhow!("No response from Inara API"))
+            Err(anyhow!("Unexpected API response format: {}", response_text))
         }
     }
 
@@ -394,7 +393,7 @@ impl InaraClient {
     /// Create request header
     fn create_header(&self) -> InaraHeader {
         InaraHeader {
-            app_name: "EDJC-HexChat-Plugin".to_string(),
+            app_name: "Elite Dangerous Jump Calculator".to_string(),
             app_version: "0.1.0".to_string(),
             is_developed: true,
             api_key: self.api_key.clone(),

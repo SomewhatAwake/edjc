@@ -15,7 +15,17 @@ A HexChat plugin written in Rust that automatically calculates optimal jump rout
 ### Prerequisites
 
 - HexChat IRC client
-- Inara API key ([Get one here](https://inara.cz/inapi/))
+- **Registered Inara API application** - see setup below
+
+### ⚠️ **Important: Inara API Setup**
+
+**You cannot just get an API key - your application must be registered with Inara!**
+
+1. **Visit [Inara API page](https://inara.cz/inapi/)**
+2. **Register your application** (not just get an API key)
+3. **Fill out the application form** with details about EDJC
+4. **Wait for approval** from Inara (can take several days)
+5. **Only then** will the API work with your key
 
 ### Quick Install
 
@@ -28,10 +38,10 @@ A HexChat plugin written in Rust that automatically calculates optimal jump rout
    Copy edjc.dll to: %APPDATA%\HexChat\addons\ (Windows)
    ```
 
-3. **Configure**:
+3. **Configure** (after Inara approval):
    ```
    Copy edjc.toml.example to: %APPDATA%\EDJC\edjc.toml
-   Add your Inara API key to the config file
+   Add your approved API key and CMDR name
    ```
 
 4. **Restart HexChat**

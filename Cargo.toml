@@ -15,6 +15,10 @@ crate-type = ["cdylib", "lib"]
 name = "test"
 path = "src/bin/test.rs"
 
+[[bin]]
+name = "debug_inara"
+path = "src/bin/debug_inara.rs"
+
 [dependencies]
 # HTTP client for API requests
 reqwest = { version = "0.11", features = ["json", "blocking"] }
@@ -39,6 +43,8 @@ config = "0.13"
 moka = { version = "0.12", features = ["sync"] }
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
+# Async runtime for API testing
+tokio = { version = "1.0", features = ["full"] }
 
 [dev-dependencies]
 # For testing with temporary files
