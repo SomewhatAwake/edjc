@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "appName": "Elite Dangerous Jump Calculator",
             "appVersion": "0.1.0",
             "isDeveloped": true,
-            "APIkey": "dummy_key_for_test"
+            "APIkey": "47dia2ypajackskkscggw8coggwogkc0sw44wkc"
         },
         "events": [
             {

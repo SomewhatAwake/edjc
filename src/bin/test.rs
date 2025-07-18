@@ -1,5 +1,4 @@
-use edjc::config::load_config;
-use edjc::inara::InaraClient;
+use edjc::edsm::EdsmClient;
 use edjc::jump_calculator::JumpCalculator;
 use std::io::{self, Write};
 
@@ -12,109 +11,97 @@ fn main() -> anyhow::Result<()> {
         eprintln!("Failed to initialize logger: {e}");
     }
 
-    // Try to load config
-    let config = match load_config() {
-        Ok(config) => config,
-        Err(e) => {
-            println!("Failed to load config: {e}");
-            println!("Please ensure edjc.toml exists with your Inara API key and CMDR name.");
-            return Ok(());
-        }
-    };
+    println!("Testing EDJC functionality with EDSM...");
 
-    println!("Testing EDJC functionality...");
-    println!("CMDR: {}", config.cmdr_name);
-
-    // Create Inara client
-    let inara_client = match InaraClient::new(config.inara_api_key.clone()) {
+    // Create EDSM client
+    let edsm_client = match EdsmClient::new() {
         Ok(client) => client,
         Err(e) => {
-            println!("Failed to create Inara client: {e}");
+            println!("Failed to create EDSM client: {e}");
             return Ok(());
         }
     };
 
     // Test API connection
-    print!("Testing Inara API connection... ");
+    print!("Testing EDSM API connection... ");
     io::stdout().flush()?;
 
-    match inara_client.test_connection(&config.cmdr_name) {
-        Ok(true) => println!("✓ Connection successful, CMDR found"),
-        Ok(false) => println!("✗ CMDR '{}' not found in Inara", config.cmdr_name),
+    match edsm_client.test_connection() {
+        Ok(true) => println!("✓ Connection successful"),
+        Ok(false) => println!("✗ Connection failed - unexpected data"),
         Err(e) => println!("✗ Connection failed: {e}"),
     }
 
-    // Test getting CMDR location
-    print!("Fetching CMDR location... ");
-    io::stdout().flush()?;
+    // Test getting system coordinates
+    let test_systems = vec!["Sol", "Sagittarius A*", "Colonia", "Beagle Point"];
+    
+    println!("\nTesting system coordinate lookup:");
+    for system in &test_systems {
+        print!("  {system}: ");
+        io::stdout().flush()?;
 
-    match inara_client.get_cmdr_location(&config.cmdr_name) {
-        Ok(location) => {
-            println!("✓ Current system: {}", location.current_system);
-            println!("  CMDR: {}", location.cmdr_name);
-            if let Some(station) = &location.current_station {
-                println!("  Station: {station}");
+        match edsm_client.get_system_coordinates(system) {
+            Ok(coords) => {
+                println!(
+                    "✓ ({:.2}, {:.2}, {:.2})", 
+                    coords.x, coords.y, coords.z
+                );
+                if coords.has_neutron_star {
+                    println!("    Has neutron star");
+                }
+                if coords.has_white_dwarf {
+                    println!("    Has white dwarf");
+                }
             }
+            Err(e) => println!("✗ Failed: {e}"),
         }
-        Err(e) => println!("✗ Failed to get location: {e}"),
     }
 
-    // Test getting ship info
-    print!("Fetching ship information... ");
-    io::stdout().flush()?;
-
-    match inara_client.get_ship_info(&config.cmdr_name) {
-        Ok(ship) => {
-            println!("✓ Ship: {}", ship.ship_type);
-            if let Some(name) = &ship.ship_name {
-                println!("  Name: {name}");
-            }
-            println!(
-                "  Jump range: {:.2} - {:.2} LY",
-                ship.min_jump_range, ship.max_jump_range
-            );
-        }
-        Err(e) => println!("✗ Failed to get ship info: {e}"),
-    }
-
-    // Test jump calculation
-    println!("\nTesting jump calculation:");
+    // Test jump calculation with real coordinates
+    println!("\nTesting jump calculation with real coordinates:");
     let jump_calc = JumpCalculator::new();
 
-    // Test with some example systems
+    // Test with real systems
     let test_cases = vec![
         ("Sol", "Sagittarius A*"),
+        ("Sol", "Colonia"),
+        ("Sol", "Beagle Point"),
         ("Deciat", "Colonia"),
-        ("Shinrarta Dezhra", "Beagle Point"),
     ];
 
     for (from, to) in test_cases {
         print!("  {from} -> {to}: ");
         io::stdout().flush()?;
 
-        // For this test, we'll use placeholder coordinates
-        // In real use, these would come from the Inara API
-        let from_coords = edjc::types::SystemCoordinates {
-            name: "Sol".to_string(),
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-            has_neutron_star: false,
-            has_white_dwarf: false,
-        };
-        let to_coords = edjc::types::SystemCoordinates {
-            name: "Test System".to_string(),
-            x: 100.0,
-            y: 50.0,
-            z: 25.0,
-            has_neutron_star: false,
-            has_white_dwarf: false,
-        };
-
-        match jump_calc.calculate_route(&from_coords, &to_coords, 50.0) {
-            Ok(route) => {
-                println!("{} jumps ({:.2} LY)", route.jumps, route.total_distance);
+        // Get real coordinates from EDSM
+        match (edsm_client.get_system_coordinates(from), edsm_client.get_system_coordinates(to)) {
+            (Ok(from_coords), Ok(to_coords)) => {
+                match jump_calc.calculate_route(&from_coords, &to_coords, 50.0) {
+                    Ok(route) => {
+                        println!("{} jumps ({:.2} LY total distance)", route.jumps, route.total_distance);
+                    }
+                    Err(e) => println!("Route calculation failed: {e}"),
+                }
             }
+            (Err(e), _) => println!("Failed to get coordinates for {from}: {e}"),
+            (_, Err(e)) => println!("Failed to get coordinates for {to}: {e}"),
+        }
+    }
+
+    // Test direct distance calculation
+    println!("\nTesting direct distance calculations:");
+    let distance_cases = vec![
+        ("Sol", "Alpha Centauri"),
+        ("Sol", "Sagittarius A*"),
+        ("Sol", "Colonia"),
+    ];
+
+    for (from, to) in distance_cases {
+        print!("  {from} -> {to}: ");
+        io::stdout().flush()?;
+
+        match edsm_client.calculate_distance(from, to) {
+            Ok(distance) => println!("{distance:.2} LY"),
             Err(e) => println!("Failed: {e}"),
         }
     }

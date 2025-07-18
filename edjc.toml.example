@@ -1,19 +1,25 @@
 # EDJC (Elite Dangerous Jump Calculator) Configuration
 # 
-# IMPORTANT: To use this plugin, you need to:
-# 1. Get an Inara API key from https://inara.cz/inapi/
-# 2. REGISTER YOUR APPLICATION with Inara for API access
-# 3. Wait for approval from Inara (this can take some time)
-# 4. Replace the values below with your actual credentials
-#
-# NOTE: Simply getting an API key is not enough - your application
-# must be registered and approved by Inara before it will work!
+# This plugin uses EDSM (Elite Dangerous Star Map) for system coordinates
+# and calculates jump routes based on your ship's jump range.
 
-# Your Inara API key (required)
-inara_api_key = "YOUR_API_KEY_HERE"
-
-# Your CMDR name (required) - this is your Elite Dangerous pilot name
+# Your CMDR name (for display purposes)
 cmdr_name = "YOUR_CMDR_NAME"
+
+# Ship configuration
+[ship]
+# Ship name/type (e.g., "Anaconda", "Asp Explorer", "DBX")
+# This is for display purposes only - no API calls are made
+name = "Asp Explorer"
+
+# Laden jump range in light years (realistic range with cargo/fuel)
+# IMPORTANT: Set this to YOUR actual ship's laden jump range
+# Check this in-game in your ship's Systems panel or use a tool like EDEngineer
+# This should be your realistic jump range, not the maximum theoretical range
+laden_jump_range = 35.0
+
+# Optional: Maximum jump range (empty/optimized) - not currently used
+# max_jump_range = 50.0
 
 # Cache timeout in seconds (default: 300 = 5 minutes)
 cache_timeout_seconds = 300

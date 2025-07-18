@@ -14,11 +14,11 @@ use std::path::PathBuf;
 /// Plugin configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// Inara API key for accessing Elite Dangerous data
-    pub inara_api_key: String,
-
     /// CMDR name for location lookups
     pub cmdr_name: String,
+
+    /// Ship name and jump range configuration
+    pub ship: ShipConfig,
 
     /// Cache timeout in seconds
     #[serde(default = "default_cache_timeout")]
@@ -49,11 +49,25 @@ pub struct Config {
     pub show_time_estimates: bool,
 }
 
+/// Ship configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShipConfig {
+    /// Ship name/type (e.g., "Anaconda", "Asp Explorer")
+    pub name: String,
+    
+    /// Laden jump range in light years (realistic jump range with cargo/fuel)
+    pub laden_jump_range: f64,
+    
+    /// Optional: Maximum jump range (empty/optimized)
+    #[serde(default)]
+    pub max_jump_range: Option<f64>,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
-            inara_api_key: String::new(),
             cmdr_name: String::new(),
+            ship: ShipConfig::default(),
             cache_timeout_seconds: default_cache_timeout(),
             debug_mode: false,
             neutron_highway_threshold_ly: default_neutron_threshold(),
@@ -61,6 +75,16 @@ impl Default for Config {
             result_format: default_result_format(),
             show_fuel_estimates: default_show_fuel(),
             show_time_estimates: default_show_time(),
+        }
+    }
+}
+
+impl Default for ShipConfig {
+    fn default() -> Self {
+        Self {
+            name: "Unknown Ship".to_string(),
+            laden_jump_range: 30.0, // Reasonable default
+            max_jump_range: None,
         }
     }
 }
@@ -96,8 +120,12 @@ pub fn load_config() -> Result<Config> {
             .map_err(|e| anyhow!("Failed to parse config file: {}", e))?;
 
         // Validate required settings
-        if config.inara_api_key.is_empty() {
-            warn!("Inara API key not configured. Please set it in the config file.");
+        if config.cmdr_name.is_empty() {
+            warn!("CMDR name not configured. Please set it in the config file.");
+        }
+        
+        if config.ship.laden_jump_range <= 0.0 {
+            warn!("Invalid ship jump range configured. Using default.");
         }
 
         Ok(config)
@@ -159,17 +187,20 @@ pub fn create_sample_config() -> Result<()> {
 
     let sample_config = r#"# EDJC (Elite Dangerous Jump Calculator) Configuration
 # 
-# To use this plugin, you need to obtain an API key from Inara:
-# 1. Go to https://inara.cz/inapi/
-# 2. Register for an API key
-# 3. Replace "YOUR_API_KEY_HERE" below with your actual key
-# 4. Replace "YOUR_CMDR_NAME" with your Elite Dangerous CMDR name
-
-# Your Inara API key (required)
-inara_api_key = "YOUR_API_KEY_HERE"
+# This plugin uses EDSM (Elite Dangerous Star Map) for system coordinates
+# and jump calculations. No API key is required for EDSM.
 
 # Your CMDR name (required) - this is your Elite Dangerous pilot name
 cmdr_name = "YOUR_CMDR_NAME"
+
+# Ship configuration
+[ship]
+# Ship name/type (for display purposes)
+name = "Asp Explorer"
+# Laden jump range in light years (your realistic jump range with cargo/fuel)
+laden_jump_range = 35.0
+# Optional: Maximum jump range when empty/optimized
+# max_jump_range = 60.0
 
 # Cache timeout in seconds (default: 300 = 5 minutes)
 cache_timeout_seconds = 300
@@ -203,12 +234,12 @@ show_time_estimates = false
 
 /// Validate configuration
 pub fn validate_config(config: &Config) -> Result<()> {
-    if config.inara_api_key.is_empty() {
-        return Err(anyhow!("Inara API key is required but not configured"));
-    }
-
     if config.cmdr_name.is_empty() {
         return Err(anyhow!("CMDR name is required but not configured"));
+    }
+
+    if config.ship.laden_jump_range <= 0.0 {
+        return Err(anyhow!("Ship laden jump range must be greater than 0"));
     }
 
     if config.cache_timeout_seconds == 0 {
@@ -243,29 +274,35 @@ mod tests {
     #[test]
     fn test_config_validation() {
         let config = Config {
-            inara_api_key: "test_key".to_string(),
             cmdr_name: "TestCMDR".to_string(),
+            ship: ShipConfig {
+                name: "Test Ship".to_string(),
+                laden_jump_range: 30.0,
+                max_jump_range: Some(50.0),
+            },
             ..Default::default()
         };
 
         assert!(validate_config(&config).is_ok());
 
         let config = Config {
-            inara_api_key: String::new(),
-            cmdr_name: "TestCMDR".to_string(),
-            ..Default::default()
-        };
-        assert!(validate_config(&config).is_err());
-
-        let config = Config {
-            inara_api_key: "test_key".to_string(),
             cmdr_name: String::new(),
             ..Default::default()
         };
         assert!(validate_config(&config).is_err());
 
         let config = Config {
-            inara_api_key: "test_key".to_string(),
+            cmdr_name: "TestCMDR".to_string(),
+            ship: ShipConfig {
+                name: "Test Ship".to_string(),
+                laden_jump_range: 0.0, // Invalid jump range
+                max_jump_range: None,
+            },
+            ..Default::default()
+        };
+        assert!(validate_config(&config).is_err());
+
+        let config = Config {
             cmdr_name: "TestCMDR".to_string(),
             cache_timeout_seconds: 0,
             ..Default::default()

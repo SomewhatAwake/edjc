@@ -2,18 +2,22 @@
 # Elite Dangerous Jump Calculator (EDJC) - HexChat Plugin
 
 A HexChat plugin that calculates the number of jumps required to reach a specified system
-in Elite: Dangerous, taking into account the player's current location, ship jump range,
-and jump multipliers from neutron stars and white dwarfs.
+in Elite: Dangerous, using EDSM system coordinates and user-configured ship jump range.
 
 ## Features
 
 - Automatically detects RATSIGNAL messages in chat
-- Fetches CMDR location and ship data from Inara API
+- Fetches system coordinates from EDSM (Elite Dangerous Star Map)
 - Calculates optimal jump routes considering:
-  - Minimum jump range of the selected ship
+  - User-configured ship laden jump range
   - Neutron star boosts (4x multiplier)
   - White dwarf boosts (1.5x multiplier)
 - Displays results as HexChat notices
+
+## Configuration
+
+Users must configure their ship's laden jump range in the `edjc.toml` file.
+No API keys or external authentication required - uses free EDSM data.
 
 ## Usage
 
@@ -28,6 +32,7 @@ RATSIGNAL Case #3 PC ODY - CMDR Whit3Arrow - System: "CRUCIS SECTOR IW-N A6-5" (
 
 pub mod config;
 mod hexchat;
+pub mod edsm;
 pub mod inara;
 pub mod jump_calculator;
 pub mod types;
@@ -40,7 +45,7 @@ use std::ffi::{CStr, CString};
 use std::ptr;
 use std::sync::OnceLock;
 
-use crate::inara::InaraClient;
+use crate::edsm::EdsmClient;
 use crate::jump_calculator::JumpCalculator;
 use crate::types::JumpResult;
 
@@ -50,10 +55,11 @@ static PLUGIN: OnceLock<EdJumpCalculator> = OnceLock::new();
 /// Main plugin structure
 #[derive(Debug)]
 pub struct EdJumpCalculator {
-    inara_client: InaraClient,
+    edsm_client: EdsmClient,
     jump_calculator: JumpCalculator,
     ratsignal_regex: Regex,
     cmdr_name: String,
+    ship_jump_range: f64,
 }
 
 impl EdJumpCalculator {
@@ -62,12 +68,13 @@ impl EdJumpCalculator {
         let config = config::load_config()?;
 
         Ok(Self {
-            inara_client: InaraClient::new(config.inara_api_key.clone())?,
+            edsm_client: EdsmClient::new()?,
             jump_calculator: JumpCalculator::new(),
             ratsignal_regex: Regex::new(
                 r#"RATSIGNAL.*?Case\s*#(\d+).*?CMDR\s+([^–]+).*?System:\s*"([^"]+)".*?Language:\s*([^(]*)"#,
             )?,
             cmdr_name: config.cmdr_name,
+            ship_jump_range: config.ship.laden_jump_range,
         })
     }
 
@@ -79,20 +86,20 @@ impl EdJumpCalculator {
             ));
         }
 
-        // Test Inara API connection
-        match self.inara_client.test_connection(&self.cmdr_name) {
+        if self.ship_jump_range <= 0.0 {
+            return Err(anyhow::anyhow!(
+                "Ship laden jump range must be greater than 0. Please set 'ship.laden_jump_range' in edjc.toml"
+            ));
+        }
+
+        // Test EDSM API connection
+        match self.edsm_client.test_connection() {
             Ok(true) => {
-                info!(
-                    "Inara API connection successful for CMDR: {}",
-                    self.cmdr_name
-                );
+                info!("EDSM API connection successful");
                 Ok(())
             }
-            Ok(false) => Err(anyhow::anyhow!(
-                "CMDR '{}' not found in Inara database",
-                self.cmdr_name
-            )),
-            Err(e) => Err(anyhow::anyhow!("Inara API connection failed: {}", e)),
+            Ok(false) => Err(anyhow::anyhow!("EDSM API connection test failed")),
+            Err(e) => Err(anyhow::anyhow!("EDSM API connection failed: {}", e)),
         }
     }
 
@@ -122,13 +129,13 @@ impl EdJumpCalculator {
             match self.calculate_jumps(target_system) {
                 Ok(result) => {
                     let response = format!(
-                        "🚀 Case #{}: {} jumps to {} ({:.1}ly) via {} route (for CMDR {})",
+                        "🚀 Case #{}: {} jumps to {} ({:.1}ly) via {} route (from Sol with {:.1}ly range)",
                         case_number,
                         result.jumps,
                         target_system,
                         result.total_distance,
                         result.route_type,
-                        self.cmdr_name
+                        self.ship_jump_range
                     );
                     Ok(Some(response))
                 }
@@ -154,21 +161,19 @@ impl EdJumpCalculator {
 
     /// Calculate jumps to target system
     fn calculate_jumps(&self, target_system: &str) -> Result<JumpResult> {
-        // Get current CMDR location and ship info using the configured CMDR name
-        let cmdr_info = self.inara_client.get_cmdr_location(&self.cmdr_name)?;
-        let ship_info = self.inara_client.get_ship_info(&self.cmdr_name)?;
+        // For now, we'll use Sol as the starting point since we can't get real CMDR location
+        // In a real implementation, you might want to add a config option for current system
+        let current_system = "Sol"; // This could be made configurable
+        
+        // Get system coordinates from EDSM
+        let current_coords = self.edsm_client.get_system_coordinates(current_system)?;
+        let target_coords = self.edsm_client.get_system_coordinates(target_system)?;
 
-        // Get system coordinates
-        let current_coords = self
-            .inara_client
-            .get_system_coordinates(&cmdr_info.current_system)?;
-        let target_coords = self.inara_client.get_system_coordinates(target_system)?;
-
-        // Calculate jump route
+        // Calculate jump route using the configured ship jump range
         self.jump_calculator.calculate_route(
             &current_coords,
             &target_coords,
-            ship_info.min_jump_range,
+            self.ship_jump_range,
         )
     }
 }

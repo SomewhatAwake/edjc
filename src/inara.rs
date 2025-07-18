@@ -14,7 +14,7 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-use crate::types::{CmdrInfo, ShipInfo, SystemCoordinates};
+use crate::types::{CmdrInfo, SystemCoordinates};
 
 const INARA_API_URL: &str = "https://inara.cz/inapi/v1/";
 const CACHE_TTL_SECONDS: u64 = 300; // 5 minutes
@@ -93,24 +93,6 @@ struct CmdrLocationResponse {
     starsystem_name: String,
     #[serde(rename = "stationName")]
     station_name: Option<String>,
-}
-
-/// Ship data response from Inara
-#[derive(Deserialize)]
-struct ShipResponse {
-    #[serde(rename = "shipType")]
-    ship_type: String,
-    #[serde(rename = "shipName")]
-    ship_name: Option<String>,
-    #[serde(rename = "shipIdent")]
-    #[allow(dead_code)]
-    ship_ident: Option<String>,
-    #[serde(rename = "isCurrentShip")]
-    is_current_ship: bool,
-    #[serde(rename = "jumpRangeMin")]
-    jump_range_min: Option<f64>,
-    #[serde(rename = "jumpRangeMax")]
-    jump_range_max: Option<f64>,
 }
 
 /// System data response from Inara
@@ -249,70 +231,6 @@ impl InaraClient {
         }
 
         Err(anyhow!("No CMDR location data received from Inara"))
-    }
-
-    /// Get ship information for a CMDR
-    pub fn get_ship_info(&self, cmdr_name: &str) -> Result<ShipInfo> {
-        let cache_key = format!("ship_info_{cmdr_name}");
-
-        if let Some(cached) = self.cache.get(&cache_key) {
-            if let Ok(info) = serde_json::from_str::<ShipInfo>(&cached) {
-                debug!("Using cached ship info for {cmdr_name}");
-                return Ok(info);
-            }
-        }
-
-        let request = InaraRequest {
-            header: self.create_header(),
-            events: vec![InaraEvent {
-                event_name: "getCommanderShips".to_string(),
-                event_timestamp: chrono::Utc::now().to_rfc3339(),
-                event_data: serde_json::json!({
-                    "commanderName": cmdr_name
-                }),
-            }],
-        };
-
-        let response: InaraResponse = self
-            .client
-            .post(INARA_API_URL)
-            .json(&request)
-            .send()?
-            .json()?;
-
-        if let Some(event) = response.events.first() {
-            if event.event_status != 200 {
-                return Err(anyhow!(
-                    "Inara API error: {}",
-                    event
-                        .event_status_text
-                        .as_deref()
-                        .unwrap_or("Unknown error")
-                ));
-            }
-
-            if let Some(data) = &event.event_data {
-                let ships: Vec<ShipResponse> = serde_json::from_value(data.clone())?;
-
-                // Find the current ship
-                if let Some(current_ship) = ships.iter().find(|ship| ship.is_current_ship) {
-                    let ship_info = ShipInfo {
-                        ship_type: current_ship.ship_type.clone(),
-                        ship_name: current_ship.ship_name.clone(),
-                        min_jump_range: current_ship.jump_range_min.unwrap_or(10.0),
-                        max_jump_range: current_ship.jump_range_max.unwrap_or(20.0),
-                    };
-
-                    // Cache the result
-                    let cached_data = serde_json::to_string(&ship_info)?;
-                    self.cache.insert(cache_key, cached_data);
-
-                    return Ok(ship_info);
-                }
-            }
-        }
-
-        Err(anyhow!("No current ship data found for CMDR {}", cmdr_name))
     }
 
     /// Get system coordinates

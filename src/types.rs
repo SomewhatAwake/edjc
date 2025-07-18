@@ -18,19 +18,6 @@ pub struct CmdrInfo {
     pub current_station: Option<String>,
 }
 
-/// Information about a ship
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ShipInfo {
-    /// Ship type (e.g., "Anaconda", "Asp Explorer")
-    pub ship_type: String,
-    /// Custom ship name
-    pub ship_name: Option<String>,
-    /// Minimum jump range in light years
-    pub min_jump_range: f64,
-    /// Maximum jump range in light years
-    pub max_jump_range: f64,
-}
-
 /// 3D coordinates of a star system
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemCoordinates {
