@@ -33,14 +33,14 @@ A HexChat plugin written in Rust that automatically calculates optimal jump rout
    ```
    Copy edjc.toml.example to: %APPDATA%\EDJC\edjc.toml
    Set your CMDR name and ship's laden jump range
-   Optionally add your EDSM API key for private location access
+   Add your EDSM API key (required for location access)
    ```
 
-4. **Get EDSM API Key** (Optional but recommended):
+4. **Get EDSM API Key** (Required):
    - Visit: https://www.edsm.net/en/settings/api
    - Generate an API key
    - Add to config: `edsm_api_key = "your-key-here"`
-   - This allows access to your private location data for accurate route calculations
+   - This is required for accessing commander location data for accurate route calculations
 
 5. **Restart HexChat**
 
@@ -102,7 +102,7 @@ The `edjc.toml` configuration file supports the following options:
 # Your CMDR name (for display purposes)
 cmdr_name = "YOUR_CMDR_NAME"
 
-# EDSM API key (optional, but recommended)
+# EDSM API key (required)
 # Get your API key from: https://www.edsm.net/en/settings/api
 edsm_api_key = "your-api-key-here"
 
@@ -159,7 +159,6 @@ src/
 ├── lib.rs              # Main plugin entry point
 ├── hexchat.rs          # HexChat FFI bindings
 ├── edsm.rs             # EDSM API client
-├── inara.rs            # Legacy Inara API client (unused)
 ├── jump_calculator.rs  # Jump calculation logic
 ├── config.rs           # Configuration management
 └── types.rs            # Shared data structures

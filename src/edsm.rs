@@ -143,7 +143,7 @@ impl EdsmClient {
     }
 
     /// Get commander's current location from EDSM
-    pub fn get_commander_location(&self, cmdr_name: &str) -> Result<String> {
+    pub fn get_commander_location(&self, cmdr_name: &str, api_key: Option<&str>) -> Result<String> {
         let cache_key = format!("cmdr_location:{}", cmdr_name.to_lowercase());
 
         // Check cache first (shorter TTL for commander location as it changes frequently)
@@ -155,11 +155,16 @@ impl EdsmClient {
         debug!("Fetching commander location for: {cmdr_name}");
 
         let url = format!("{EDSM_LOGS_API_URL}/get-position");
-        let response = self
-            .client
-            .get(&url)
-            .query(&[("commanderName", cmdr_name), ("showCoordinates", "1")])
-            .send()?;
+
+        // Build query parameters
+        let mut query_params = vec![("commanderName", cmdr_name), ("showCoordinates", "1")];
+
+        // Add API key if provided
+        if let Some(key) = api_key {
+            query_params.push(("apiKey", key));
+        }
+
+        let response = self.client.get(&url).query(&query_params).send()?;
 
         if !response.status().is_success() {
             return Err(anyhow!("EDSM API request failed: {}", response.status()));

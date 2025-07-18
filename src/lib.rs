@@ -38,7 +38,6 @@ Example manual test:
 pub mod config;
 pub mod edsm;
 mod hexchat;
-pub mod inara;
 pub mod jump_calculator;
 pub mod types;
 

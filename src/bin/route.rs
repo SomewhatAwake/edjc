@@ -107,7 +107,8 @@ fn main() -> anyhow::Result<()> {
             "Getting {}'s current location from EDSM...",
             config.cmdr_name
         );
-        match edsm_client.get_commander_location(&config.cmdr_name) {
+        match edsm_client.get_commander_location(&config.cmdr_name, config.edsm_api_key.as_deref())
+        {
             Ok(system) => {
                 println!("✓ Found {} in {}", config.cmdr_name, system);
                 system

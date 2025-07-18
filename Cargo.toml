@@ -15,10 +15,6 @@ crate-type = ["cdylib", "lib"]
 name = "test"
 path = "src/bin/test.rs"
 
-[[bin]]
-name = "debug_inara"
-path = "src/bin/debug_inara.rs"
-
 [dependencies]
 # HTTP client for API requests
 reqwest = { version = "0.11", features = ["json", "blocking"] }

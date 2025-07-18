@@ -4,7 +4,7 @@
 
 ### Prerequisites
 - HexChat IRC client installed
-- An Inara API key ([Get one here](https://inara.cz/inapi/))
+- An EDSM API key ([Get one here](https://www.edsm.net/en/settings/api))
 
 ### Installation Steps
 
@@ -27,7 +27,7 @@
    - Linux/macOS: ~/.config/edjc/edjc.toml
    
    Edit the config file and add:
-   inara_api_key = "your_api_key_here"
+   edsm_api_key = "your_api_key_here"
    cmdr_name = "YourCMDRName"
    ```
 
@@ -84,8 +84,8 @@ To verify the plugin is working:
 
 ### Basic Configuration
 ```toml
-# Your Inara API key (required)
-inara_api_key = "your_api_key_here"
+# Your EDSM API key (required)
+edsm_api_key = "your_api_key_here"
 
 # Cache timeout in seconds (default: 300)
 cache_timeout_seconds = 300
@@ -117,26 +117,26 @@ show_time_estimates = false
 4. **Check Logs**: Look for error messages in HexChat's server window
 
 ### API Key Issues
-1. **Verify Key**: Test your API key at [Inara API](https://inara.cz/inapi/)
+1. **Verify Key**: Test your API key at [EDSM API](https://www.edsm.net/en/settings/api)
 2. **Check Format**: Ensure the key is quoted in the config file
 3. **Check Permissions**: Verify the config file is readable
 
 ### No Jump Calculations
-1. **Check Config**: Ensure inara_api_key is set correctly
+1. **Check Config**: Ensure edsm_api_key is set correctly
 2. **Check Network**: Verify internet connectivity
 3. **Check Messages**: Ensure RATSIGNAL messages are from MechaSqueak[BOT]
 4. **Check Debug Mode**: Enable debug_mode = true for detailed logging
 
 ### Common Error Messages
 
-**"Inara API key is required but not configured"**
+**"EDSM API key is required but not configured"**
 - Solution: Add your API key to the config file
 
-**"No CMDR location data received from Inara"**
-- Solution: Verify your API key and check that your CMDR profile is public
+**"No CMDR location data received from EDSM"**
+- Solution: Verify your API key and check that your CMDR profile has location data accessible
 
 **"System not found"**
-- Solution: Check system name spelling, some systems may not be in Inara's database
+- Solution: Check system name spelling, some systems may not be in EDSM's database
 
 ## Development Setup
 

@@ -61,7 +61,7 @@ Thank you for your interest in contributing to EDJC (Elite Dangerous Jump Calcul
 src/
 ├── lib.rs              # Main plugin entry point and HexChat integration
 ├── hexchat.rs          # HexChat FFI bindings and utilities
-├── inara.rs            # Inara API client with caching
+├── edsm.rs             # EDSM API client with caching
 ├── jump_calculator.rs  # Core jump calculation logic
 ├── config.rs           # Configuration management
 └── types.rs            # Shared data structures and types
@@ -125,11 +125,11 @@ When requesting features, please include:
 
 ## API Considerations
 
-### Inara API
-- Respect rate limits (current limit: 1 request per second)
-- Cache responses appropriately (default: 5 minutes)
+### EDSM API
+- Respect rate limits (recommended: reasonable spacing between requests)
+- Cache responses appropriately (default: 1 hour for system data, shorter for commander location)
 - Handle API errors gracefully
-- Follow Inara's Terms of Service
+- Follow EDSM's Terms of Service
 
 ### HexChat Plugin API
 - Follow HexChat plugin conventions
@@ -172,5 +172,5 @@ By contributing to EDJC, you agree that your contributions will be licensed unde
 
 - Elite Dangerous community for inspiration and feedback
 - Fuel Rats for the rescue service that inspired this plugin
-- Inara for providing the API
+- EDSM for providing the system data API
 - HexChat for the plugin platform
