@@ -158,7 +158,10 @@ impl EdsmClient {
         let response = self
             .client
             .get(&url)
-            .query(&[("commanderName", cmdr_name), ("showCoordinates", "1")])
+            .query(&[
+                ("commanderName", cmdr_name),
+                ("showCoordinates", "1"),
+            ])
             .send()?;
 
         if !response.status().is_success() {
@@ -175,12 +178,9 @@ impl EdsmClient {
             }
         }
 
-        let system_name = commander_data.system.ok_or_else(|| {
-            anyhow!(
-                "Commander '{}' not found or no location data available",
-                cmdr_name
-            )
-        })?;
+        let system_name = commander_data
+            .system
+            .ok_or_else(|| anyhow!("Commander '{}' not found or no location data available", cmdr_name))?;
 
         // Cache the result with shorter TTL (commander location changes frequently)
         self.cache.insert(cache_key, system_name.clone());
