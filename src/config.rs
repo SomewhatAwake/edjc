@@ -17,6 +17,10 @@ pub struct Config {
     /// CMDR name for location lookups
     pub cmdr_name: String,
 
+    /// EDSM API key for accessing private commander data
+    #[serde(default)]
+    pub edsm_api_key: Option<String>,
+
     /// Ship name and jump range configuration
     pub ship: ShipConfig,
 
@@ -67,6 +71,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             cmdr_name: String::new(),
+            edsm_api_key: None,
             ship: ShipConfig::default(),
             cache_timeout_seconds: default_cache_timeout(),
             debug_mode: false,

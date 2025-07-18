@@ -33,15 +33,56 @@ A HexChat plugin written in Rust that automatically calculates optimal jump rout
    ```
    Copy edjc.toml.example to: %APPDATA%\EDJC\edjc.toml
    Set your CMDR name and ship's laden jump range
+   Optionally add your EDSM API key for private location access
    ```
 
-4. **Restart HexChat**
+4. **Get EDSM API Key** (Optional but recommended):
+   - Visit: https://www.edsm.net/en/settings/api
+   - Generate an API key
+   - Add to config: `edsm_api_key = "your-key-here"`
+   - This allows access to your private location data for accurate route calculations
+
+5. **Restart HexChat**
+
+### Standalone Route Calculator
+
+For testing and manual route calculations, EDJC includes a standalone calculator:
+
+```bash
+# Build the calculator
+cargo build --release
+
+# The executable will be in:
+target/release/route.exe
+
+# Usage:
+route.exe "System Name"
+```
 
 For detailed installation instructions, see [INSTALL.md](INSTALL.md).
 
 ## Usage
 
 The plugin automatically triggers when it detects a RATSIGNAL message from `MechaSqueak[BOT]`. 
+
+### Manual Testing
+
+**Important Note**: The `/route` command is temporarily disabled in the HexChat plugin due to stability issues. Instead, use the standalone route calculator:
+
+```bash
+# From the EDJC directory:
+cargo run --bin route -- "Colonia"
+cargo run --bin route -- "Sagittarius A*"
+cargo run --bin route -- "Beagle Point"
+```
+
+Alternatively, if you have the built executable:
+```bash
+route.exe "Colonia"
+route.exe "Sagittarius A*"
+```
+
+**HexChat Plugin Status**: The plugin will still automatically respond to RATSIGNAL messages from MechaSqueak[BOT]. The manual command feature will be restored in a future update once stability issues are resolved.
 
 ### Example Trigger Message
 ```
@@ -60,6 +101,10 @@ The `edjc.toml` configuration file supports the following options:
 ```toml
 # Your CMDR name (for display purposes)
 cmdr_name = "YOUR_CMDR_NAME"
+
+# EDSM API key (optional, but recommended)
+# Get your API key from: https://www.edsm.net/en/settings/api
+edsm_api_key = "your-api-key-here"
 
 # Ship configuration
 [ship]

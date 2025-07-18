@@ -1,27 +1,5 @@
 /*!
-EDSM API client for fe/// EDSM system response
-#[derive(Debug, Deserialize)]
-struct EdsmSystemResponse {
-    name: String,
-    coords: Option<EdsmCoordinates>,
-    #[serde(rename = "primaryStar")]
-    primary_star: Option<EdsmStar>,
-}
-
-#[derive(Debug, Deserialize)]
-struct EdsmCoordinates {
-    x: f64,
-    y: f64,
-    z: f64,
-}
-
-#[derive(Debug, Deserialize)]
-struct EdsmStar {
-    #[serde(rename = "type")]
-    star_type: Option<String>,
-    #[serde(rename = "subType")]
-    sub_type: Option<String>,
-}Dangerous system coordinates.
+EDSM API client for Elite Dangerous system coordinates.
 
 This module handles communication with the EDSM API to retrieve system coordinates
 for jump calculations.
@@ -37,6 +15,7 @@ use std::time::Duration;
 use crate::types::SystemCoordinates;
 
 const EDSM_API_URL: &str = "https://www.edsm.net/api-v1";
+const EDSM_LOGS_API_URL: &str = "https://www.edsm.net/api-logs-v1";
 const CACHE_TTL_SECONDS: u64 = 3600; // 1 hour (EDSM data changes rarely)
 
 /// EDSM API client
@@ -53,6 +32,15 @@ struct EdsmSystemResponse {
     coords: Option<EdsmCoordinates>,
     #[serde(rename = "primaryStar")]
     primary_star: Option<EdsmStar>,
+}
+
+/// EDSM commander location response
+#[derive(Debug, Deserialize)]
+struct EdsmCommanderResponse {
+    #[serde(rename = "msgnum")]
+    msg_num: Option<i32>,
+    msg: Option<String>,
+    system: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -152,6 +140,52 @@ impl EdsmClient {
         }
 
         Ok(coordinates)
+    }
+
+    /// Get commander's current location from EDSM
+    pub fn get_commander_location(&self, cmdr_name: &str) -> Result<String> {
+        let cache_key = format!("cmdr_location:{}", cmdr_name.to_lowercase());
+
+        // Check cache first (shorter TTL for commander location as it changes frequently)
+        if let Some(cached) = self.cache.get(&cache_key) {
+            debug!("Cache hit for commander location: {cmdr_name}");
+            return Ok(cached);
+        }
+
+        debug!("Fetching commander location for: {cmdr_name}");
+
+        let url = format!("{EDSM_LOGS_API_URL}/get-position");
+        let response = self
+            .client
+            .get(&url)
+            .query(&[("commanderName", cmdr_name), ("showCoordinates", "1")])
+            .send()?;
+
+        if !response.status().is_success() {
+            return Err(anyhow!("EDSM API request failed: {}", response.status()));
+        }
+
+        let commander_data: EdsmCommanderResponse = response.json()?;
+
+        // Check for API errors
+        if let Some(msg_num) = commander_data.msg_num {
+            if msg_num != 100 {
+                let error_msg = commander_data.msg.unwrap_or("Unknown error".to_string());
+                return Err(anyhow!("EDSM API error {}: {}", msg_num, error_msg));
+            }
+        }
+
+        let system_name = commander_data.system.ok_or_else(|| {
+            anyhow!(
+                "Commander '{}' not found or no location data available",
+                cmdr_name
+            )
+        })?;
+
+        // Cache the result with shorter TTL (commander location changes frequently)
+        self.cache.insert(cache_key, system_name.clone());
+
+        Ok(system_name)
     }
 
     /// Calculate distance between two systems

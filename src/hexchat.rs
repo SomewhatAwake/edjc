@@ -49,6 +49,15 @@ static mut HEXCHAT_HOOK_PRINT: Option<
     ) -> *mut HexChatHook,
 > = None;
 #[allow(dead_code)]
+static mut HEXCHAT_HOOK_COMMAND: Option<
+    unsafe extern "C" fn(
+        *mut HexChatPlugin,
+        *const c_char,
+        Option<HexChatCallback>,
+        *mut c_void,
+    ) -> *mut HexChatHook,
+> = None;
+#[allow(dead_code)]
 static mut HEXCHAT_COMMAND: Option<unsafe extern "C" fn(*mut HexChatPlugin, *const c_char)> = None;
 #[allow(dead_code)]
 static mut HEXCHAT_GET_INFO: Option<
@@ -96,11 +105,15 @@ pub unsafe fn init_hexchat_api(
 /// Print text to HexChat
 pub fn hexchat_print(text: *const c_char) {
     unsafe {
-        // For now, use a simple approach - in a real plugin, we'd use the proper API
-        if !PLUGIN_HANDLE.is_null() {
-            // Simplified implementation - would need proper HexChat API integration
-            eprintln!("HEXCHAT: {}", c_str_to_string(text));
+        if let Some(print_fn) = HEXCHAT_PRINT {
+            if !PLUGIN_HANDLE.is_null() {
+                print_fn(PLUGIN_HANDLE, text);
+                return;
+            }
         }
+
+        // Fallback for testing/debugging - print to stderr so it's visible
+        eprintln!("HEXCHAT: {}", c_str_to_string(text));
     }
 }
 
@@ -115,6 +128,26 @@ pub fn hexchat_hook_print(
     // this would use the proper HexChat API
     info!("Hook registered for: {}", c_str_to_string(name));
     std::ptr::null_mut()
+}
+
+/// Hook into a HexChat command
+#[allow(dead_code)]
+pub fn hexchat_hook_command(
+    name: *const c_char,
+    callback: Option<HexChatCallback>,
+    user_data: *mut c_void,
+) -> *mut HexChatHook {
+    unsafe {
+        if let Some(hook_command_fn) = HEXCHAT_HOOK_COMMAND {
+            if !PLUGIN_HANDLE.is_null() {
+                return hook_command_fn(PLUGIN_HANDLE, name, callback, user_data);
+            }
+        }
+
+        // Fallback for testing/debugging
+        info!("Command hook registered for: {}", c_str_to_string(name));
+        std::ptr::null_mut()
+    }
 }
 
 /// Send a command to HexChat

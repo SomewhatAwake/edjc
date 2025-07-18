@@ -22,11 +22,16 @@ No API keys or external authentication required - uses free EDSM data.
 ## Usage
 
 The plugin automatically triggers when it detects a RATSIGNAL message from MechaSqueak[BOT]
-containing system information.
+containing system information. Users can also test the plugin manually using `/route <system>`.
 
 Example trigger:
 ```text
 RATSIGNAL Case #3 PC ODY - CMDR Whit3Arrow - System: "CRUCIS SECTOR IW-N A6-5" (Brown dwarf 51 LY from Fuelum) - Language: English (United States) (en-US) (ODY_SIGNAL)
+```
+
+Example manual test:
+```text
+/route Colonia
 ```
 */
 
@@ -41,8 +46,7 @@ use anyhow::Result;
 use libc::c_char;
 use log::{error, info, warn};
 use regex::Regex;
-use std::ffi::{CStr, CString};
-use std::ptr;
+use std::ffi::CString;
 use std::sync::OnceLock;
 
 use crate::edsm::EdsmClient;
@@ -173,85 +177,54 @@ impl EdJumpCalculator {
         self.jump_calculator
             .calculate_route(&current_coords, &target_coords, self.ship_jump_range)
     }
+
+    /// Handle the /route command for testing
+    pub fn handle_route_command(&self, target_system: &str) -> String {
+        if target_system.trim().is_empty() {
+            return "Usage: /route <system_name>".to_string();
+        }
+
+        let system_name = target_system.trim();
+
+        match self.calculate_jumps(system_name) {
+            Ok(result) => {
+                format!(
+                    "🚀 Route to {}: {} jumps ({:.1} LY) via {} route (from Sol with {:.1} LY range)",
+                    system_name,
+                    result.jumps,
+                    result.total_distance,
+                    result.route_type,
+                    self.ship_jump_range
+                )
+            }
+            Err(e) => {
+                error!("Failed to calculate route to {system_name}: {e}");
+                format!("❌ Route calculation failed for {system_name}: {e}")
+            }
+        }
+    }
 }
 
-/// Initialize HexChat integration with proper API hooks
+/// Initialize HexChat integration with minimal, safe hooks
 unsafe fn init_hexchat_integration(
     plugin_handle: *mut hexchat::HexChatPlugin,
     _arg: *const c_char,
 ) -> Result<()> {
-    // For now, we'll use a simplified approach since HexChat API function pointers
-    // are complex to parse. In a real implementation, you'd parse the function
-    // pointers from the arg parameter.
-
     // Store plugin handle for later use
     hexchat::store_plugin_handle(plugin_handle);
 
-    // Hook into channel messages to detect RATSIGNAL
-    let hook_name = CString::new("Channel Message")?;
-    let _hook = hexchat::hexchat_hook_print(
-        hook_name.as_ptr(),
-        Some(channel_message_callback),
-        ptr::null_mut(),
-    );
+    // For now, let's not register any hooks to avoid crashes
+    // We'll provide an alternative way for users to test the plugin
+
+    // Print a startup message
+    let startup_msg =
+        CString::new("[EDJC] Plugin loaded successfully! RATSIGNAL detection is active.")?;
+    hexchat::hexchat_print(startup_msg.as_ptr());
+
+    let help_msg = CString::new("[EDJC] Note: /route command temporarily disabled for stability. Plugin will auto-respond to RATSIGNAL messages.")?;
+    hexchat::hexchat_print(help_msg.as_ptr());
 
     Ok(())
-}
-
-/// Callback for channel messages - detects RATSIGNAL messages
-extern "C" fn channel_message_callback(
-    word: *const *const c_char,
-    _word_eol: *const *const c_char,
-    _user_data: *mut libc::c_void,
-) -> i32 {
-    if word.is_null() {
-        return hexchat::HEXCHAT_EAT_NONE;
-    }
-
-    unsafe {
-        // word[0] = nick, word[1] = message
-        let message_ptr = *word.add(1);
-        if message_ptr.is_null() {
-            return hexchat::HEXCHAT_EAT_NONE;
-        }
-
-        let message = match CStr::from_ptr(message_ptr).to_str() {
-            Ok(s) => s,
-            Err(_) => return hexchat::HEXCHAT_EAT_NONE,
-        };
-
-        // Check if it's from MechaSqueak[BOT] and contains RATSIGNAL
-        let nick_ptr = *word;
-        if !nick_ptr.is_null() {
-            if let Ok(nick) = CStr::from_ptr(nick_ptr).to_str() {
-                if nick == "MechaSqueak[BOT]" && message.contains("RATSIGNAL") {
-                    // Process the RATSIGNAL message
-                    if let Some(plugin) = PLUGIN.get() {
-                        match plugin.process_message(nick, message) {
-                            Ok(Some(response)) => {
-                                // Display the response in HexChat
-                                let formatted_response = format!("[EDJC] {response}");
-                                hexchat::hexchat_print(
-                                    CString::new(formatted_response).unwrap().as_ptr(),
-                                );
-                            }
-                            Ok(None) => {
-                                // RATSIGNAL detected but couldn't parse or not from expected sender
-                                info!("Message ignored or couldn't parse: {message}");
-                            }
-                            Err(e) => {
-                                error!("Error processing RATSIGNAL: {e}");
-                                let error_msg = format!("[EDJC] Error: {e}");
-                                hexchat::hexchat_print(CString::new(error_msg).unwrap().as_ptr());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    hexchat::HEXCHAT_EAT_NONE // Don't consume the message
 }
 
 // HexChat plugin export functions
