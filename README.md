@@ -1,3 +1,6 @@
+[![Build](https://github.com/SomewhatAwake/edjc/actions/workflows/ci.yml/badge.svg)](https://github.com/SomewhatAwake/edjc/actions/workflows/ci.yml) [![Docs](https://github.com/SomewhatAwake/edjc/actions/workflows/jekyll-gh-pages.yml/badge.svg)](https://github.com/SomewhatAwake/edjc/actions/workflows/jekyll-gh-pages.yml) ![Static Badge](https://img.shields.io/badge/my%20pain-immeasurable-red)
+
+
 # EDJC - Elite Dangerous Jump Calculator (HexChat Plugin)
 
 A HexChat plugin written in Rust that automatically calculates optimal jump routes in Elite: Dangerous when RATSIGNAL messages are detected in chat.
