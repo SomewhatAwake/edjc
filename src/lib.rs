@@ -31,8 +31,8 @@ RATSIGNAL Case #3 PC ODY - CMDR Whit3Arrow - System: "CRUCIS SECTOR IW-N A6-5" (
 */
 
 pub mod config;
-mod hexchat;
 pub mod edsm;
+mod hexchat;
 pub mod inara;
 pub mod jump_calculator;
 pub mod types;
@@ -164,17 +164,14 @@ impl EdJumpCalculator {
         // For now, we'll use Sol as the starting point since we can't get real CMDR location
         // In a real implementation, you might want to add a config option for current system
         let current_system = "Sol"; // This could be made configurable
-        
+
         // Get system coordinates from EDSM
         let current_coords = self.edsm_client.get_system_coordinates(current_system)?;
         let target_coords = self.edsm_client.get_system_coordinates(target_system)?;
 
         // Calculate jump route using the configured ship jump range
-        self.jump_calculator.calculate_route(
-            &current_coords,
-            &target_coords,
-            self.ship_jump_range,
-        )
+        self.jump_calculator
+            .calculate_route(&current_coords, &target_coords, self.ship_jump_range)
     }
 }
 

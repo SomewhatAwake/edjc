@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
 
     // Test getting system coordinates
     let test_systems = vec!["Sol", "Sagittarius A*", "Colonia", "Beagle Point"];
-    
+
     println!("\nTesting system coordinate lookup:");
     for system in &test_systems {
         print!("  {system}: ");
@@ -42,10 +42,7 @@ fn main() -> anyhow::Result<()> {
 
         match edsm_client.get_system_coordinates(system) {
             Ok(coords) => {
-                println!(
-                    "✓ ({:.2}, {:.2}, {:.2})", 
-                    coords.x, coords.y, coords.z
-                );
+                println!("✓ ({:.2}, {:.2}, {:.2})", coords.x, coords.y, coords.z);
                 if coords.has_neutron_star {
                     println!("    Has neutron star");
                 }
@@ -74,11 +71,17 @@ fn main() -> anyhow::Result<()> {
         io::stdout().flush()?;
 
         // Get real coordinates from EDSM
-        match (edsm_client.get_system_coordinates(from), edsm_client.get_system_coordinates(to)) {
+        match (
+            edsm_client.get_system_coordinates(from),
+            edsm_client.get_system_coordinates(to),
+        ) {
             (Ok(from_coords), Ok(to_coords)) => {
                 match jump_calc.calculate_route(&from_coords, &to_coords, 50.0) {
                     Ok(route) => {
-                        println!("{} jumps ({:.2} LY total distance)", route.jumps, route.total_distance);
+                        println!(
+                            "{} jumps ({:.2} LY total distance)",
+                            route.jumps, route.total_distance
+                        );
                     }
                     Err(e) => println!("Route calculation failed: {e}"),
                 }

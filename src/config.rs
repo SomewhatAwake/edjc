@@ -54,10 +54,10 @@ pub struct Config {
 pub struct ShipConfig {
     /// Ship name/type (e.g., "Anaconda", "Asp Explorer")
     pub name: String,
-    
+
     /// Laden jump range in light years (realistic jump range with cargo/fuel)
     pub laden_jump_range: f64,
-    
+
     /// Optional: Maximum jump range (empty/optimized)
     #[serde(default)]
     pub max_jump_range: Option<f64>,
@@ -123,7 +123,7 @@ pub fn load_config() -> Result<Config> {
         if config.cmdr_name.is_empty() {
             warn!("CMDR name not configured. Please set it in the config file.");
         }
-        
+
         if config.ship.laden_jump_range <= 0.0 {
             warn!("Invalid ship jump range configured. Using default.");
         }

@@ -57,7 +57,7 @@ impl EdsmClient {
     /// Get system coordinates from EDSM
     pub fn get_system_coordinates(&self, system_name: &str) -> Result<SystemCoordinates> {
         let cache_key = format!("coords:{}", system_name.to_lowercase());
-        
+
         // Check cache first
         if let Some(cached) = self.cache.get(&cache_key) {
             if let Ok(coords) = serde_json::from_str::<SystemCoordinates>(&cached) {
@@ -67,14 +67,12 @@ impl EdsmClient {
         }
 
         debug!("Fetching coordinates for system: {system_name}");
-        
+
         let url = format!("{EDSM_API_URL}/system");
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
-            .query(&[
-                ("systemName", system_name),
-                ("showCoordinates", "1"),
-            ])
+            .query(&[("systemName", system_name), ("showCoordinates", "1")])
             .send()?;
 
         if !response.status().is_success() {
@@ -82,8 +80,9 @@ impl EdsmClient {
         }
 
         let system_data: EdsmSystemResponse = response.json()?;
-        
-        let coords = system_data.coords
+
+        let coords = system_data
+            .coords
             .ok_or_else(|| anyhow!("System '{}' not found or has no coordinates", system_name))?;
 
         let coordinates = SystemCoordinates {
@@ -113,11 +112,12 @@ impl EdsmClient {
     /// Test connection to EDSM by looking up Sol
     pub fn test_connection(&self) -> Result<bool> {
         debug!("Testing EDSM connection with Sol system");
-        
+
         match self.get_system_coordinates("Sol") {
             Ok(coords) => {
                 // Sol should be at (0, 0, 0)
-                let distance_from_origin = (coords.x.powi(2) + coords.y.powi(2) + coords.z.powi(2)).sqrt();
+                let distance_from_origin =
+                    (coords.x.powi(2) + coords.y.powi(2) + coords.z.powi(2)).sqrt();
                 Ok(distance_from_origin < 1.0)
             }
             Err(_) => Ok(false),
@@ -147,7 +147,7 @@ mod tests {
             has_neutron_star: false,
             has_white_dwarf: false,
         };
-        
+
         let alpha_centauri = SystemCoordinates {
             name: "Alpha Centauri".to_string(),
             x: 3.03125,
@@ -156,7 +156,7 @@ mod tests {
             has_neutron_star: false,
             has_white_dwarf: false,
         };
-        
+
         let distance = calculate_3d_distance(&sol, &alpha_centauri);
         // Alpha Centauri is approximately 4.3 LY from Sol
         assert!((distance - 4.3).abs() < 0.5);
@@ -172,7 +172,7 @@ mod tests {
             has_neutron_star: false,
             has_white_dwarf: false,
         };
-        
+
         // Sagittarius A* coordinates (approximate)
         let sagittarius_a = SystemCoordinates {
             name: "Sagittarius A*".to_string(),
@@ -182,7 +182,7 @@ mod tests {
             has_neutron_star: false,
             has_white_dwarf: false,
         };
-        
+
         let distance = calculate_3d_distance(&sol, &sagittarius_a);
         // Sagittarius A* is approximately 25,900 LY from Sol
         assert!((distance - 25900.0).abs() < 100.0);
