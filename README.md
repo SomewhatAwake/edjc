@@ -8,8 +8,8 @@ A HexChat plugin written in Rust that automatically calculates optimal jump rout
 ## Features
 
 - **Automatic RATSIGNAL Detection**: Monitors chat for MechaSqueak[BOT] RATSIGNAL messages
-- **Real-time Data**: Fetches CMDR location and ship data from Inara API
 - **Smart Route Calculation**: Considers neutron stars (4x boost) and white dwarfs (1.5x boost)
+- **User-Configured Ship**: Manual ship jump range configuration for accuracy
 - **Caching**: Intelligent caching of API responses for better performance
 - **Configurable**: Customizable output formats and calculation thresholds
 
@@ -18,8 +18,6 @@ A HexChat plugin written in Rust that automatically calculates optimal jump rout
 ### Prerequisites
 
 - HexChat IRC client
-- **Registered Inara API application** - see setup below
-
 ### Quick Install
 
 1. **Download the Plugin**:
@@ -31,10 +29,10 @@ A HexChat plugin written in Rust that automatically calculates optimal jump rout
    Copy edjc.dll to: %APPDATA%\HexChat\addons\ (Windows)
    ```
 
-3. **Configure** (after Inara approval):
+3. **Configure**:
    ```
    Copy edjc.toml.example to: %APPDATA%\EDJC\edjc.toml
-   Add your approved API key and CMDR name
+   Set your CMDR name and ship's laden jump range
    ```
 
 4. **Restart HexChat**
@@ -52,7 +50,7 @@ RATSIGNAL Case #3 PC ODY – CMDR ResponsibleFuelManagement – System: "Far Flu
 
 ### Example Output
 ```
-Jump Calculator: 12 jumps to Far Flung System (289.4ly total) via neutron highway route
+🚀 Case #3: 12 jumps to Far Flung System (289.4ly) via neutron highway route (from Sol with 35.0ly range)
 ```
 
 ## Configuration Options
@@ -60,8 +58,12 @@ Jump Calculator: 12 jumps to Far Flung System (289.4ly total) via neutron highwa
 The `edjc.toml` configuration file supports the following options:
 
 ```toml
-# Your Inara API key (required)
-inara_api_key = "your_api_key_here"
+# Your CMDR name (for display purposes)
+cmdr_name = "YOUR_CMDR_NAME"
+
+# Ship configuration
+[ship]
+laden_jump_range = 35.0
 
 # Cache timeout in seconds (default: 300)
 cache_timeout_seconds = 300
@@ -96,9 +98,9 @@ The `result_format` string supports the following placeholders:
 
 1. **Message Detection**: The plugin monitors all chat messages for the RATSIGNAL pattern
 2. **System Extraction**: Parses the system name from the RATSIGNAL message
-3. **Data Retrieval**: Fetches current CMDR location and ship data from Inara API
+3. **Data Retrieval**: Fetches system coordinates from EDSM API
 4. **Route Calculation**: Calculates optimal route considering:
-   - Ship's minimum jump range
+   - User-configured ship laden jump range
    - Neutron star locations (4x jump range multiplier)
    - White dwarf locations (1.5x jump range multiplier)
 5. **Result Display**: Shows the calculation result as a HexChat notice
@@ -111,7 +113,8 @@ The `result_format` string supports the following placeholders:
 src/
 ├── lib.rs              # Main plugin entry point
 ├── hexchat.rs          # HexChat FFI bindings
-├── inara.rs            # Inara API client
+├── edsm.rs             # EDSM API client
+├── inara.rs            # Legacy Inara API client (unused)
 ├── jump_calculator.rs  # Jump calculation logic
 ├── config.rs           # Configuration management
 └── types.rs            # Shared data structures
@@ -135,13 +138,12 @@ cargo fmt
 
 ### API Integration
 
-This plugin uses the [Inara API](https://inara.cz/inapi/v1/) to fetch:
+This plugin uses the [EDSM API](https://www.edsm.net/api-v1/) to fetch:
 
-- CMDR current location and status
-- Ship information including jump ranges  
 - System coordinates and stellar data
+- Distance calculations between systems
 
-API responses are cached for 5 minutes by default to reduce API calls and improve performance.
+EDSM is free to use and requires no API keys or registration. API responses are cached for 1 hour by default to reduce API calls and improve performance.
 
 ## Contributing
 
@@ -167,6 +169,6 @@ This plugin is not affiliated with or endorsed by Frontier Developments or the c
 ## Acknowledgments
 
 - [Fuel Rats](https://fuelrats.com/) for their amazing rescue service
-- [Inara](https://inara.cz/) for providing the API
+- [EDSM](https://www.edsm.net/) for providing free system data
 - [HexChat](https://hexchat.github.io/) for the plugin platform
 - Elite: Dangerous community for inspiration and support

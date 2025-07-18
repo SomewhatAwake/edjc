@@ -14,12 +14,9 @@ name = "Asp Explorer"
 
 # Laden jump range in light years (realistic range with cargo/fuel)
 # IMPORTANT: Set this to YOUR actual ship's laden jump range
-# Check this in-game in your ship's Systems panel or use a tool like EDEngineer
+# Check this in-game in your ship's Systems panel or use a tool like EDSY or Coriolis
 # This should be your realistic jump range, not the maximum theoretical range
 laden_jump_range = 35.0
-
-# Optional: Maximum jump range (empty/optimized) - not currently used
-# max_jump_range = 50.0
 
 # Cache timeout in seconds (default: 300 = 5 minutes)
 cache_timeout_seconds = 300
@@ -33,7 +30,7 @@ white_dwarf_threshold_ly = 150.0
 
 # Result format string
 # Available placeholders: {jumps}, {system}, {distance}, {route}, {from}, {to}
-result_format = "🚀 {jumps} jumps to {system} ({distance:.1}ly) via {route}"
+result_format = "{jumps} jumps to {system} ({distance:.1}ly) via {route}"
 
 # Show additional estimates
 show_fuel_estimates = false

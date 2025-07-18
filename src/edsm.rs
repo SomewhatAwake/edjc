@@ -1,5 +1,27 @@
 /*!
-EDSM API client for fetching Elite Dangerous system coordinates.
+EDSM API client for fe/// EDSM system response
+#[derive(Debug, Deserialize)]
+struct EdsmSystemResponse {
+    name: String,
+    coords: Option<EdsmCoordinates>,
+    #[serde(rename = "primaryStar")]
+    primary_star: Option<EdsmStar>,
+}
+
+#[derive(Debug, Deserialize)]
+struct EdsmCoordinates {
+    x: f64,
+    y: f64,
+    z: f64,
+}
+
+#[derive(Debug, Deserialize)]
+struct EdsmStar {
+    #[serde(rename = "type")]
+    star_type: Option<String>,
+    #[serde(rename = "subType")]
+    sub_type: Option<String>,
+}Dangerous system coordinates.
 
 This module handles communication with the EDSM API to retrieve system coordinates
 for jump calculations.
@@ -24,11 +46,13 @@ pub struct EdsmClient {
     cache: Cache<String, String>,
 }
 
-/// EDSM system response - simplified to only what we need
+/// EDSM system response
 #[derive(Debug, Deserialize)]
 struct EdsmSystemResponse {
     name: String,
     coords: Option<EdsmCoordinates>,
+    #[serde(rename = "primaryStar")]
+    primary_star: Option<EdsmStar>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -36,6 +60,14 @@ struct EdsmCoordinates {
     x: f64,
     y: f64,
     z: f64,
+}
+
+#[derive(Debug, Deserialize)]
+struct EdsmStar {
+    #[serde(rename = "type")]
+    star_type: Option<String>,
+    #[serde(rename = "subType")]
+    sub_type: Option<String>,
 }
 
 impl EdsmClient {
@@ -72,7 +104,11 @@ impl EdsmClient {
         let response = self
             .client
             .get(&url)
-            .query(&[("systemName", system_name), ("showCoordinates", "1")])
+            .query(&[
+                ("systemName", system_name),
+                ("showCoordinates", "1"),
+                ("showPrimaryStar", "1"),
+            ])
             .send()?;
 
         if !response.status().is_success() {
@@ -85,13 +121,29 @@ impl EdsmClient {
             .coords
             .ok_or_else(|| anyhow!("System '{}' not found or has no coordinates", system_name))?;
 
+        // Determine if system has neutron star or white dwarf
+        let (has_neutron_star, has_white_dwarf) = if let Some(star) = &system_data.primary_star {
+            let star_type = star.star_type.as_deref().unwrap_or("");
+            let sub_type = star.sub_type.as_deref().unwrap_or("");
+
+            let has_neutron = star_type.contains("Neutron") || sub_type.contains("Neutron");
+            let has_white_dwarf = star_type.contains("White Dwarf")
+                || sub_type.contains("DA")
+                || sub_type.contains("DB")
+                || sub_type.contains("DC");
+
+            (has_neutron, has_white_dwarf)
+        } else {
+            (false, false)
+        };
+
         let coordinates = SystemCoordinates {
             name: system_data.name,
             x: coords.x,
             y: coords.y,
             z: coords.z,
-            has_neutron_star: false, // We don't need this for basic jump calculations
-            has_white_dwarf: false,
+            has_neutron_star,
+            has_white_dwarf,
         };
 
         // Cache the result
