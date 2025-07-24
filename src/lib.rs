@@ -62,6 +62,7 @@ pub struct EdJumpCalculator {
     jump_calculator: JumpCalculator,
     ratsignal_regex: Regex,
     cmdr_name: String,
+    edsm_api_key: Option<String>,
     ship_jump_range: f64,
 }
 
@@ -77,6 +78,7 @@ impl EdJumpCalculator {
                 r#"RATSIGNAL.*?Case\s*#(\d+).*?CMDR\s+([^–]+).*?System:\s*"([^"]+)".*?Language:\s*([^(]*)"#,
             )?,
             cmdr_name: config.cmdr_name,
+            edsm_api_key: config.edsm_api_key,
             ship_jump_range: config.ship.laden_jump_range,
         })
     }
@@ -129,15 +131,16 @@ impl EdJumpCalculator {
                 "RATSIGNAL detected - Case #{case_number}, CMDR: {distressed_cmdr}, System: {target_system}, Language: {language}"
             );
 
-            match self.calculate_jumps(target_system) {
-                Ok(result) => {
+            match self.calculate_jumps_with_origin(target_system) {
+                Ok((result, origin_system)) => {
                     let response = format!(
-                        "🚀 Case #{}: {} jumps to {} ({:.1}ly) via {} route (from Sol with {:.1}ly range)",
+                        "🚀 Case #{}: {} jumps to {} ({:.1}ly) via {} route (from {} with {:.1}ly range)",
                         case_number,
                         result.jumps,
                         target_system,
                         result.total_distance,
                         result.route_type,
+                        origin_system,
                         self.ship_jump_range
                     );
                     Ok(Some(response))
@@ -162,21 +165,6 @@ impl EdJumpCalculator {
         }
     }
 
-    /// Calculate jumps to target system
-    fn calculate_jumps(&self, target_system: &str) -> Result<JumpResult> {
-        // For now, we'll use Sol as the starting point since we can't get real CMDR location
-        // In a real implementation, you might want to add a config option for current system
-        let current_system = "Sol"; // This could be made configurable
-
-        // Get system coordinates from EDSM
-        let current_coords = self.edsm_client.get_system_coordinates(current_system)?;
-        let target_coords = self.edsm_client.get_system_coordinates(target_system)?;
-
-        // Calculate jump route using the configured ship jump range
-        self.jump_calculator
-            .calculate_route(&current_coords, &target_coords, self.ship_jump_range)
-    }
-
     /// Handle the /route command for testing
     pub fn handle_route_command(&self, target_system: &str) -> String {
         if target_system.trim().is_empty() {
@@ -185,14 +173,15 @@ impl EdJumpCalculator {
 
         let system_name = target_system.trim();
 
-        match self.calculate_jumps(system_name) {
-            Ok(result) => {
+        match self.calculate_jumps_with_origin(system_name) {
+            Ok((result, origin_system)) => {
                 format!(
-                    "🚀 Route to {}: {} jumps ({:.1} LY) via {} route (from Sol with {:.1} LY range)",
+                    "🚀 Route to {}: {} jumps ({:.1} LY) via {} route (from {} with {:.1} LY range)",
                     system_name,
                     result.jumps,
                     result.total_distance,
                     result.route_type,
+                    origin_system,
                     self.ship_jump_range
                 )
             }
@@ -202,25 +191,69 @@ impl EdJumpCalculator {
             }
         }
     }
+
+    /// Calculate jumps to target system and return both result and origin system
+    fn calculate_jumps_with_origin(&self, target_system: &str) -> Result<(JumpResult, String)> {
+        // Try to get commander's current location from EDSM
+        let current_system = match self
+            .edsm_client
+            .get_commander_location(&self.cmdr_name, self.edsm_api_key.as_deref())
+        {
+            Ok(system) => {
+                info!(
+                    "Using CMDR {}'s current location: {}",
+                    self.cmdr_name, system
+                );
+                system
+            }
+            Err(e) => {
+                warn!("Could not get CMDR location from EDSM: {e}. Using Sol as fallback.");
+                "Sol".to_string()
+            }
+        };
+
+        // Get system coordinates from EDSM
+        let current_coords = self.edsm_client.get_system_coordinates(&current_system)?;
+        let target_coords = self.edsm_client.get_system_coordinates(target_system)?;
+
+        // Calculate jump route using the configured ship jump range
+        let result = self.jump_calculator.calculate_route(
+            &current_coords,
+            &target_coords,
+            self.ship_jump_range,
+        )?;
+
+        Ok((result, current_system))
+    }
 }
 
-/// Initialize HexChat integration with minimal, safe hooks
+/// Initialize HexChat integration - basic version without command hooks
 unsafe fn init_hexchat_integration(
     plugin_handle: *mut hexchat::HexChatPlugin,
-    _arg: *const c_char,
+    arg: *const c_char,
 ) -> Result<()> {
     // Store plugin handle for later use
     hexchat::store_plugin_handle(plugin_handle);
 
-    // For now, let's not register any hooks to avoid crashes
-    // We'll provide an alternative way for users to test the plugin
+    // Initialize HexChat API
+    if !hexchat::init_hexchat_api_from_arg(plugin_handle, arg) {
+        warn!("Could not initialize HexChat API from arg parameter");
+    }
 
-    // Print a startup message
+    // Register the /route command - temporarily disabled for stability
+    let route_cmd = CString::new("route")?;
+    let _route_hook = hexchat::hexchat_hook_command(
+        route_cmd.as_ptr(),
+        Some(route_command_callback),
+        std::ptr::null_mut(),
+    );
+
+    // Print startup messages
     let startup_msg =
         CString::new("[EDJC] Plugin loaded successfully! RATSIGNAL detection is active.")?;
     hexchat::hexchat_print(startup_msg.as_ptr());
 
-    let help_msg = CString::new("[EDJC] Note: /route command temporarily disabled for stability. Plugin will auto-respond to RATSIGNAL messages.")?;
+    let help_msg = CString::new("[EDJC] Note: /route command temporarily disabled for stability. Use standalone calculator for testing.")?;
     hexchat::hexchat_print(help_msg.as_ptr());
 
     Ok(())
@@ -278,13 +311,11 @@ pub unsafe extern "C" fn hexchat_plugin_init(
                 hexchat::hexchat_print(CString::new(error_msg).unwrap().as_ptr());
             }
 
-            // Try to set up HexChat API if we have the function pointers
-            if !arg.is_null() {
-                if let Err(e) = init_hexchat_integration(plugin_handle, arg) {
-                    warn!("HexChat integration limited: {e}");
-                } else {
-                    info!("HexChat integration initialized");
-                }
+            // Set up HexChat API integration
+            if let Err(e) = init_hexchat_integration(plugin_handle, arg) {
+                warn!("HexChat integration limited: {e}");
+            } else {
+                info!("HexChat integration initialized");
             }
 
             PLUGIN.set(plugin).unwrap();
@@ -321,4 +352,40 @@ extern "C" fn message_callback(
     // This would be implemented when we have proper HexChat API access
     // For now, just return HEXCHAT_EAT_NONE
     hexchat::HEXCHAT_EAT_NONE
+}
+
+/// Callback for the /route command
+extern "C" fn route_command_callback(
+    word: *const *const c_char,
+    _word_eol: *const *const c_char,
+    _user_data: *mut libc::c_void,
+) -> i32 {
+    if let Some(plugin) = PLUGIN.get() {
+        unsafe {
+            // Parse the command arguments
+            let target_system = if !word.is_null() {
+                // word[0] is the command name ("/route"), word[1] is the first argument
+                let word1_ptr = *word.offset(1);
+                if !word1_ptr.is_null() {
+                    hexchat::c_str_to_string(word1_ptr)
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            };
+
+            // Handle the route command
+            let response = plugin.handle_route_command(&target_system);
+
+            // Send the response to HexChat
+            let response_cstr = std::ffi::CString::new(response).unwrap();
+            hexchat::hexchat_print(response_cstr.as_ptr());
+        }
+    } else {
+        let error_msg = std::ffi::CString::new("❌ Plugin not initialized").unwrap();
+        hexchat::hexchat_print(error_msg.as_ptr());
+    }
+
+    hexchat::HEXCHAT_EAT_ALL // Consume the command so HexChat doesn't show "unknown command"
 }

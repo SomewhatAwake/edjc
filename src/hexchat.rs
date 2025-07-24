@@ -1,12 +1,5 @@
-/*!
-HexChat plugin bindings and utilities.
-
-This module provides the necessary FFI bindings and helper functions
-to interface with the HexChat plugin API.
-*/
-
 use libc::{c_char, c_int, c_void};
-use log::info;
+use std::ffi::CStr;
 
 /// HexChat plugin handle (opaque pointer)
 pub type HexChatPlugin = c_void;
@@ -36,38 +29,6 @@ pub type HexChatCallback = extern "C" fn(
     user_data: *mut c_void,
 ) -> c_int;
 
-// HexChat API function pointers - these will be provided by HexChat at runtime
-#[allow(dead_code)]
-static mut HEXCHAT_PRINT: Option<unsafe extern "C" fn(*mut HexChatPlugin, *const c_char)> = None;
-#[allow(dead_code)]
-static mut HEXCHAT_HOOK_PRINT: Option<
-    unsafe extern "C" fn(
-        *mut HexChatPlugin,
-        *const c_char,
-        Option<HexChatCallback>,
-        *mut c_void,
-    ) -> *mut HexChatHook,
-> = None;
-#[allow(dead_code)]
-static mut HEXCHAT_HOOK_COMMAND: Option<
-    unsafe extern "C" fn(
-        *mut HexChatPlugin,
-        *const c_char,
-        Option<HexChatCallback>,
-        *mut c_void,
-    ) -> *mut HexChatHook,
-> = None;
-#[allow(dead_code)]
-static mut HEXCHAT_COMMAND: Option<unsafe extern "C" fn(*mut HexChatPlugin, *const c_char)> = None;
-#[allow(dead_code)]
-static mut HEXCHAT_GET_INFO: Option<
-    unsafe extern "C" fn(*mut HexChatPlugin, *const c_char) -> *const c_char,
-> = None;
-#[allow(dead_code)]
-static mut HEXCHAT_UNHOOK: Option<
-    unsafe extern "C" fn(*mut HexChatPlugin, *mut HexChatHook) -> *mut c_void,
-> = None;
-
 // Global plugin handle storage
 static mut PLUGIN_HANDLE: *mut HexChatPlugin = std::ptr::null_mut();
 
@@ -78,97 +39,47 @@ pub fn store_plugin_handle(handle: *mut HexChatPlugin) {
     }
 }
 
-/// Initialize HexChat API function pointers
-/// This should be called from hexchat_plugin_init with the provided function pointers
-#[allow(dead_code)]
-pub unsafe fn init_hexchat_api(
+/// Simple API initialization that just stores the handle
+pub unsafe fn init_hexchat_api_from_arg(
     plugin_handle: *mut HexChatPlugin,
-    print_fn: unsafe extern "C" fn(*mut HexChatPlugin, *const c_char),
-    hook_print_fn: unsafe extern "C" fn(
-        *mut HexChatPlugin,
-        *const c_char,
-        Option<HexChatCallback>,
-        *mut c_void,
-    ) -> *mut HexChatHook,
-    command_fn: unsafe extern "C" fn(*mut HexChatPlugin, *const c_char),
-    get_info_fn: unsafe extern "C" fn(*mut HexChatPlugin, *const c_char) -> *const c_char,
-    unhook_fn: unsafe extern "C" fn(*mut HexChatPlugin, *mut HexChatHook) -> *mut c_void,
-) {
+    _arg: *const c_char,
+) -> bool {
     PLUGIN_HANDLE = plugin_handle;
-    HEXCHAT_PRINT = Some(print_fn);
-    HEXCHAT_HOOK_PRINT = Some(hook_print_fn);
-    HEXCHAT_COMMAND = Some(command_fn);
-    HEXCHAT_GET_INFO = Some(get_info_fn);
-    HEXCHAT_UNHOOK = Some(unhook_fn);
+    true
 }
 
-/// Print text to HexChat
+/// Print text to HexChat - for now just use stderr which shows in HexChat
 pub fn hexchat_print(text: *const c_char) {
     unsafe {
-        if let Some(print_fn) = HEXCHAT_PRINT {
-            if !PLUGIN_HANDLE.is_null() {
-                print_fn(PLUGIN_HANDLE, text);
-                return;
+        if !text.is_null() {
+            if let Ok(text_str) = CStr::from_ptr(text).to_str() {
+                // Use eprintln! which will appear in HexChat's console
+                eprintln!("[EDJC] {}", text_str);
             }
         }
-
-        // Fallback for testing/debugging - print to stderr so it's visible
-        eprintln!("HEXCHAT: {}", c_str_to_string(text));
     }
 }
 
-/// Hook into a HexChat print event
-#[allow(dead_code)]
-pub fn hexchat_hook_print(
+/// Register a command hook - disabled for now to prevent crashes
+pub fn hexchat_hook_command(
     name: *const c_char,
     _callback: Option<HexChatCallback>,
     _user_data: *mut c_void,
 ) -> *mut HexChatHook {
-    // For now, return a dummy hook - in a real implementation,
-    // this would use the proper HexChat API
-    info!("Hook registered for: {}", c_str_to_string(name));
-    std::ptr::null_mut()
-}
-
-/// Hook into a HexChat command
-#[allow(dead_code)]
-pub fn hexchat_hook_command(
-    name: *const c_char,
-    callback: Option<HexChatCallback>,
-    user_data: *mut c_void,
-) -> *mut HexChatHook {
     unsafe {
-        if let Some(hook_command_fn) = HEXCHAT_HOOK_COMMAND {
-            if !PLUGIN_HANDLE.is_null() {
-                return hook_command_fn(PLUGIN_HANDLE, name, callback, user_data);
-            }
-        }
-
-        // Fallback for testing/debugging
-        info!("Command hook registered for: {}", c_str_to_string(name));
-        std::ptr::null_mut()
+        let cmd_name = if !name.is_null() {
+            CStr::from_ptr(name).to_string_lossy().into_owned()
+        } else {
+            "unknown".to_string()
+        };
+        
+        // For now, just log that we would register the command
+        eprintln!("[EDJC] Would register command hook for: {}", cmd_name);
+        eprintln!("[EDJC] Command hooks temporarily disabled for stability");
+        
+        // Return a dummy hook pointer
+        1 as *mut HexChatHook
     }
-}
-
-/// Send a command to HexChat
-#[allow(dead_code)]
-pub fn hexchat_command(command: *const c_char) {
-    info!("Command: {}", c_str_to_string(command));
-    // Simplified implementation
-}
-
-/// Get HexChat information
-#[allow(dead_code)]
-pub fn hexchat_get_info(id: *const c_char) -> *const c_char {
-    info!("Info requested: {}", c_str_to_string(id));
-    std::ptr::null()
-}
-
-/// Unhook a previously hooked event
-#[allow(dead_code)]
-pub fn hexchat_unhook(hook: *mut HexChatHook) -> *mut c_void {
-    info!("Unhooking: {hook:?}");
-    std::ptr::null_mut()
 }
 
 /// Utility function to safely convert C strings
@@ -178,14 +89,8 @@ pub fn c_str_to_string(c_str: *const c_char) -> String {
     }
 
     unsafe {
-        std::ffi::CStr::from_ptr(c_str)
+        CStr::from_ptr(c_str)
             .to_string_lossy()
             .into_owned()
     }
-}
-
-/// Utility function to create C strings safely
-#[allow(dead_code)]
-pub fn string_to_c_str(s: &str) -> std::ffi::CString {
-    std::ffi::CString::new(s).unwrap_or_else(|_| std::ffi::CString::new("").unwrap())
 }

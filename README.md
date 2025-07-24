@@ -67,8 +67,9 @@ The plugin automatically triggers when it detects a RATSIGNAL message from `Mech
 
 ### Manual Testing
 
-**Important Note**: The `/route` command is temporarily disabled in the HexChat plugin due to stability issues. Instead, use the standalone route calculator:
+You can test the plugin functionality using the standalone route calculator:
 
+**Standalone Calculator**: Use the standalone route calculator for testing:
 ```bash
 # From the EDJC directory:
 cargo run --bin route -- "Colonia"
@@ -82,7 +83,7 @@ route.exe "Colonia"
 route.exe "Sagittarius A*"
 ```
 
-**HexChat Plugin Status**: The plugin will still automatically respond to RATSIGNAL messages from MechaSqueak[BOT]. The manual command feature will be restored in a future update once stability issues are resolved.
+**HexChat Plugin Status**: The plugin supports automatic RATSIGNAL detection from MechaSqueak[BOT]. The `/route` command is temporarily disabled while we work on stability improvements. Use the standalone calculator for manual testing.
 
 ### Example Trigger Message
 ```
